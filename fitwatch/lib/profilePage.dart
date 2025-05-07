@@ -10,7 +10,7 @@
 //   @override
 //   State<Profile> createState() => _ProfileState();
 // }
-// //  Uri.parse('ws://192.168.0.104:9001/data'), 
+// //  Uri.parse('ws://192.168.0.104:9001/data'),
 // class _ProfileState extends State<Profile> {
 //   Future<Map<String, dynamic>> fetchData() async {
 
@@ -22,7 +22,7 @@
 //   channel.stream.listen((message) {
 //     print("Received raw message: $message");
 //     try {
-      
+
 //       final List<dynamic> dataList = jsonDecode(message);
 //     final Map<String, dynamic> firstData = dataList[0]; // access first index
 
@@ -30,7 +30,7 @@
 //     print("Gyroscope Y: ${firstData['gyro_y']}");
 //     print("Gyroscope Z: ${firstData['gyro_z']}");
 //       //print('Received Data: $data');
-      
+
 //     } catch (e) {
 //       print('Error decoding JSON: $e');
 //     }
@@ -42,7 +42,7 @@
 // }
 
 //     final response = await http.get(
-//      Uri.parse('http://192.168.255.202:8000/data'), 
+//      Uri.parse('http://192.168.255.202:8000/data'),
 //     );
 //     if (response.statusCode == 200) {
 //       return jsonDecode(response.body);
@@ -96,7 +96,7 @@
 //   }
 // }
 
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'dart:convert'; // For JSON parsing
@@ -331,6 +331,269 @@ Future<void> _reconnect() async {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _client.disconnect();
+    super.dispose();
+  }
+}*/
+
+
+import 'package:flutter/material.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
+import 'dart:convert';
+
+class Profile extends StatefulWidget {
+  const Profile({Key? key}) : super(key: key);
+
+  @override
+  _ProfileState createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  late MqttServerClient _client;
+  String _status = "Disconnected";
+  Map<String, dynamic> _currentData = {
+    'timestamp': '--:--:--',
+    'acc_x': 0.0,
+    'acc_y': 0.0,
+    'acc_z': 0.0,
+    'gyro_x': 0.0,
+    'gyro_y': 0.0,
+    'gyro_z': 0.0,
+    'activity': 'waiting'
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _connectToMqtt();
+  }
+
+  Future<void> _connectToMqtt() async {
+    // Use actual broker IP (10.0.2.2 for emulator)
+    _client =
+        MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
+    _client.keepAlivePeriod = 30;
+    _client.onConnected = _onConnected;
+    _client.onDisconnected = _onDisconnected;
+
+    try {
+      await _client.connect();
+      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+      _client.updates?.listen((messages) {
+        final message = messages[0].payload as MqttPublishMessage;
+        final payload =
+            MqttPublishPayload.bytesToStringAsString(message.payload.message);
+        _updateData(payload);
+      });
+    } catch (e) {
+      setState(() => _status = "Connection failed");
+    }
+  }
+
+  void _onConnected() {
+    setState(() => _status = "Connected");
+  }
+
+  void _onDisconnected() {
+    setState(() => _status = "Disconnected");
+  }
+
+  void _updateData(String payload) {
+    try {
+      final data = jsonDecode(payload) as List<dynamic>;
+      setState(() {
+        _currentData = {
+          'timestamp': data[0],
+          'acc_x': data[1],
+          'acc_y': data[2],
+          'acc_z': data[3],
+          'gyro_x': data[4],
+          'gyro_y': data[5],
+          'gyro_z': data[6],
+          'activity': data[7],
+        };
+      });
+    } catch (e) {
+      print("Data parse error: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sensor Data'),
+        actions: [
+          Icon(
+            _status == "Connected" ? Icons.wifi : Icons.wifi_off,
+            color: _status == "Connected" ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Current Activity
+            Card(
+              child: ListTile(
+                leading: _getActivityIcon(_currentData['activity']),
+                title: Text(
+                  _currentData['activity'].toString().toUpperCase(),
+                  style: const TextStyle(fontSize: 20),
+                ),
+                subtitle: Text("Last update: ${_currentData['timestamp']}"),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Accelerometer Data
+            const Text("ACCELEROMETER",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSensorValue("X", _currentData['acc_x']),
+                _buildSensorValue("Y", _currentData['acc_y']),
+                _buildSensorValue("Z", _currentData['acc_z']),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Gyroscope Data
+            const Text("GYROSCOPE",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSensorValue("X", _currentData['gyro_x']),
+                _buildSensorValue("Y", _currentData['gyro_y']),
+                _buildSensorValue("Z", _currentData['gyro_z']),
+              ],
+            ),
+
+            
+            Container(
+              margin: const EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Timestamp
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      _currentData['timestamp'].toString().split(' ').last,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+
+                  // Accelerometer
+                  _buildSensorChip(
+                      'A',
+                      '${_currentData['acc_x'].toStringAsFixed(1)}'
+                          '/${_currentData['acc_y'].toStringAsFixed(1)}'
+                          '/${_currentData['acc_z'].toStringAsFixed(1)}'),
+
+                  // Gyroscope
+                  _buildSensorChip(
+                      'G',
+                      '${_currentData['gyro_x'].toStringAsFixed(1)}'
+                          '/${_currentData['gyro_y'].toStringAsFixed(1)}'
+                          '/${_currentData['gyro_z'].toStringAsFixed(1)}'),
+
+                  // Activity
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getActivityColor(_currentData['activity']),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _currentData['activity']
+                          .toString()
+                          .substring(0, 3)
+                          .toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+            ),
+            const Spacer(),
+
+            // Connection Status
+            Text(
+              _status,
+              style: TextStyle(
+                color: _status == "Connected" ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+Widget _buildSensorChip(String label, String value) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(label, style: const TextStyle(fontSize: 10)),
+      Text(value, style: const TextStyle(fontSize: 12)),
+    ],
+  );
+}
+
+Color _getActivityColor(String activity) {
+  switch (activity.toLowerCase()) {
+    case 'walking': return Colors.blue;
+    case 'running': return Colors.green;
+    case 'falling': return Colors.red;
+    default: return Colors.grey;
+  }
+}
+  Widget _buildSensorValue(String axis, dynamic value) {
+    return Column(
+      children: [
+        Text(axis, style: const TextStyle(fontSize: 16)),
+        Text(
+          value.toStringAsFixed(2),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _getActivityIcon(String activity) {
+    switch (activity.toLowerCase()) {
+      case 'walking':
+        return const Icon(Icons.directions_walk, color: Colors.blue);
+      case 'running':
+        return const Icon(Icons.directions_run, color: Colors.green);
+      case 'falling':
+        return const Icon(Icons.warning, color: Colors.red);
+      default:
+        return const Icon(Icons.access_time, color: Colors.grey);
+    }
   }
 
   @override
