@@ -3,6 +3,8 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class Profile extends StatefulWidget {
   const Profile({Key? key}) : super(key: key);
 
@@ -11,226 +13,112 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  late MqttServerClient _client;
-  String _status = "Disconnected";
-  List<Map<String, dynamic>> _dataHistory = [];
-  final ScrollController _scrollController = ScrollController();
+  late String? name, age, height, weight;
 
   @override
   void initState() {
     super.initState();
-    _connectToMqtt();
+    _getDateFromSharedPref();
   }
 
-  Future<void> _connectToMqtt() async {
-    _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
-    _client.keepAlivePeriod = 30;
-    _client.onConnected = _onConnected;
-    _client.onDisconnected = _onDisconnected;
-
-    try {
-      await _client.connect();
-      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
-      _client.updates?.listen((messages) {
-        final message = messages[0].payload as MqttPublishMessage;
-        final payload = MqttPublishPayload.bytesToStringAsString(message.payload.message);
-        _updateData(payload);
-      });
-    } catch (e) {
-      setState(() => _status = "Connection failed");
-    }
+  _getDateFromSharedPref() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      name = prefs.getString('name') ?? "";
+      age = prefs.getString('age') ?? "";
+      height = prefs.getString('height') ?? "";
+      weight = prefs.getString('weight') ?? "";
+    });
   }
+  
+  @override
+  Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+      title: const Text(
+        'User Profile',
+        style: TextStyle(
+          fontSize: 25,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
+      actions: [
+        // Optional network status icon
+        // Icon(
+        //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
+        //   color: _status == "Connected" ? Colors.green : Colors.red,
+        // ),
+      ],
+    ),
+    backgroundColor: const Color.fromRGBO(245, 251, 255, 1.0), // Light background
+    body: Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.account_circle, size: 100, color: Colors.blueGrey),
+          const SizedBox(height: 30),
+          userData("Username:", name!),
+          const SizedBox(height: 15),
+          userData("Age:", age!),
+          const SizedBox(height: 15),
+          userData("Height (ft):", height!),
+          const SizedBox(height: 15),
+          userData("Weight (kg):", weight!),
+          const SizedBox(height: 40),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, 'editProfile');
+            },
+            icon: Icon(Icons.edit, color: Colors.white,),
+            label: Text("Edit Profile", style: TextStyle(color: Colors.white),),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromRGBO(96, 181, 255, 1),
+              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+          )
+        ],
+      ),
+    ),
+  );
+}
 
-  void _onConnected() {
-    setState(() => _status = "Connected");
-  }
-
-  void _onDisconnected() {
-    setState(() => _status = "Disconnected");
-  }
-
-  void _updateData(String payload) {
-    try {
-      // final data = jsonDecode(payload) as List<dynamic>;
-      final data = jsonDecode(payload) as Map<String, dynamic>;
-
-      setState(() {
-        // _dataHistory.insert(0, {
-        //   'timestamp': data[0],
-        //   'acc_x': data[1],
-        //   'acc_y': data[2],
-        //   'acc_z': data[3],
-        //   'gyro_x': data[4],
-        //   'gyro_y': data[5],
-        //   'gyro_z': data[6],
-        //   'activity': data[7],
-        // });
-        _dataHistory.insert(0, {
-  'timestamp': data['timestamp'],
-  'acc_x': data['acc_x'],
-  'acc_y': data['acc_y'],
-  'acc_z': data['acc_z'],
-  'gyro_x': data['gyro_x'],
-  'gyro_y': data['gyro_y'],
-  'gyro_z': data['gyro_z'],
-  'activity': data['activity'],
-});
-
-        
-        // Keep only last 100 entries
-        if (_dataHistory.length > 100) {
-          _dataHistory.removeLast();
-        }
-      });
-      
-      // Auto-scroll to top when new data arrives
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    } catch (e) {
-      print("Data parse error: $e");
-    }
-  }
-
-  Widget _buildDataRow(Map<String, dynamic> data) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
+Widget userData(String key, String value) {
+  return Card(
+    elevation: 4,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Timestamp
-          SizedBox(
-            width: 60,
-            child: Text(
-              data['timestamp'].toString().split(' ').last,
-              style: const TextStyle(fontSize: 12),
+          Text(
+            key,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
             ),
           ),
-          
-          // Accelerometer
-          _buildSensorChip('A', 
-            '${data['acc_x'].toStringAsFixed(1)}'
-            '/${data['acc_y'].toStringAsFixed(1)}'
-            '/${data['acc_z'].toStringAsFixed(1)}'
-          ),
-          
-          // Gyroscope
-          _buildSensorChip('G', 
-            '${data['gyro_x'].toStringAsFixed(1)}'
-            '/${data['gyro_y'].toStringAsFixed(1)}'
-            '/${data['gyro_z'].toStringAsFixed(1)}'
-          ),
-          
-          // Activity
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _getActivityColor(data['activity']),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              data['activity'].toString().substring(0, 3).toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildSensorChip(String label, String value) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10)),
-        Text(value, style: const TextStyle(fontSize: 12)),
-      ],
-    );
-  }
-
-  Color _getActivityColor(String activity) {
-    switch (activity.toLowerCase()) {
-      case 'walking': return Colors.blue;
-      case 'running': return Colors.green;
-      case 'falling': return Colors.red;
-      default: return Colors.grey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sensor Data'),
-        actions: [
-          Icon(
-            _status == "Connected" ? Icons.wifi : Icons.wifi_off,
-            color: _status == "Connected" ? Colors.green : Colors.red,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Current Data Display
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                const Text("CURRENT READING", 
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _dataHistory.isNotEmpty 
-                  ? _buildDataRow(_dataHistory.first)
-                  : _buildDataRow({
-                      'timestamp': '--:--:--',
-                      'acc_x': 0.0,
-                      'acc_y': 0.0,
-                      'acc_z': 0.0,
-                      'gyro_x': 0.0,
-                      'gyro_y': 0.0,
-                      'gyro_z': 0.0,
-                      'activity': 'waiting'
-                    }),
-              ],
-            ),
-          ),
-          
-          // Historical Data List
-          const Divider(height: 1),
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text("HISTORY", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _dataHistory.length,
-              itemBuilder: (context, index) {
-                return _buildDataRow(_dataHistory[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _client.disconnect();
-    _scrollController.dispose();
-    super.dispose();
-  }
+  
 }
