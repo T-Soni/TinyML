@@ -13,7 +13,7 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  late String? name, age, height, weight;
+  late String? name, age, height, weight, uid;
 
   @override
   void initState() {
@@ -29,6 +29,7 @@ class _ProfileState extends State<Profile> {
       age = prefs.getString('age') ?? "";
       height = prefs.getString('height') ?? "";
       weight = prefs.getString('weight') ?? "";
+      uid = prefs.getString('uid') ?? "";
     });
   }
   
@@ -53,7 +54,7 @@ class _ProfileState extends State<Profile> {
         // ),
       ],
     ),
-    backgroundColor: const Color.fromRGBO(245, 251, 255, 1.0), // Light background
+    // backgroundColor: const Color.fromRGBO(245, 251, 255, 1.0), // Light background
     body: Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
