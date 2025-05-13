@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fitwatch/activityPage.dart';
 import 'package:fitwatch/dataLogs.dart';
 import 'package:fitwatch/profilePage.dart';
@@ -19,6 +21,12 @@ class _HomePage extends State<HomePage> {
   late MqttServerClient _client;
   String _status = "Disconnected";
   List<Map<String, dynamic>> _dataHistory = [];
+
+  String? _currentActivity;
+  bool _isCollecting = false;
+  List<Map<String, dynamic>> _newDataBuffer = [];
+
+  StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
 
   @override
   void initState() {
@@ -74,22 +82,73 @@ class _HomePage extends State<HomePage> {
     setState(() => _status = "Disconnected");
   }
 
+void _startCollection(String activity) {
+    setState(() {
+      _currentActivity = activity;
+      _isCollecting = true;
+    //   _newDataBuffer.clear();
+    // });
+
+    // // Subscribe only when starting collection
+    // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+    // _mqttSubscription = _client.updates?.listen((messages) {
+    //   final message = messages[0].payload as MqttPublishMessage;
+    //   final payload = MqttPublishPayload.bytesToStringAsString(message.payload.message);
+    //   _updateData(payload);
+    });
+  }
+
+  void _stopCollection() {
+    // Unsubscribe when stopping
+    // _mqttSubscription?.cancel();
+    // _client.unsubscribe('wearable/sensor_data');
+
+    setState(() {
+      _isCollecting = false;
+      // Merge buffer with main history
+      _dataHistory.insertAll(0, _newDataBuffer);
+      _newDataBuffer.clear(); // Clear the buffer
+      _saveData();
+    });
+
+    
+  }
+
   void _updateData(String payload) {
+     if (!_isCollecting) return; // Critical: Ignore all data when not collecting
+
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
-        _dataHistory.insert(0, {
-          'timestamp': data['timestamp'],
-          'acc_x': data['acc_x'],
-          'acc_y': data['acc_y'],
-          'acc_z': data['acc_z'],
-          'gyro_x': data['gyro_x'],
-          'gyro_y': data['gyro_y'],
-          'gyro_z': data['gyro_z'],
-          'activity': data['activity'],
+        // _dataHistory.insert(0, {
+        //   'timestamp': data['timestamp'],
+        //   'acc_x': data['acc_x'],
+        //   'acc_y': data['acc_y'],
+        //   'acc_z': data['acc_z'],
+        //   'gyro_x': data['gyro_x'],
+        //   'gyro_y': data['gyro_y'],
+        //   'gyro_z': data['gyro_z'],
+        //   'activity': data['activity'],
+        // });
+        // _saveData(); // Save to SharedPreferences
+
+        // final newEntry = {
+        //   ...data,
+        //   'activity': _isCollecting ? _currentActivity : data['activity'],
+        // };
+
+        // if (_isCollecting) {
+        //   _newDataBuffer.insert(0, newEntry);
+        // } else {
+        //   _dataHistory.insert(0, newEntry);
+        //   _saveData();
+        // }
+
+        _newDataBuffer.insert(0, {
+          ...data,
+          'activity': _currentActivity!, // Guaranteed to exist
         });
-        _saveData(); // Save to SharedPreferences
       });
     } catch (e) {
       print("Data parse error: $e");
@@ -130,8 +189,18 @@ class _HomePage extends State<HomePage> {
       body:IndexedStack(
         index: currentPageIndex,
         children: [
-          DataLogs(dataHistory: _dataHistory, status: _status),
-          AnnotateActivity(),
+          // DataLogs(dataHistory: _dataHistory, status: _status),
+          // AnnotateActivity(),
+          DataLogs(
+            dataHistory: _isCollecting 
+                ? [..._newDataBuffer, ..._dataHistory] 
+                : _dataHistory,
+            status: _status,
+          ),
+          AnnotateActivity(
+            onStart: _startCollection,
+            onStop: _stopCollection,
+          ),
           Profile(),
           
         ],
@@ -141,6 +210,7 @@ class _HomePage extends State<HomePage> {
   }
   @override
   void dispose() {
+    _mqttSubscription?.cancel();
     _client.disconnect();
     super.dispose();
   }
