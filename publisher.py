@@ -17,7 +17,7 @@ def generate_gyro():
     return [round(random.uniform(-10.0, 10.0), 2) for _ in range(3)]  # gyro_x, gyro_y, gyro_z
 
 def get_activity():
-    activities = ["walking", "running", "idle", "falling"]
+    activities = ["walking", "walking_upstairs", "walking_downstairs", "sitting", "standing", "laying"]
     return random.choice(activities)
 
 try:
@@ -29,14 +29,6 @@ try:
             gyro_x, gyro_y, gyro_z = generate_gyro()
             activity = get_activity()
             
-            # payload = [
-            #     timestamp,
-            #     acc_x, acc_y, acc_z,
-            #     gyro_x, gyro_y, gyro_z,
-            #     activity
-            # ]
-            
-            # client.publish("wearable/sensor_data", json.dumps(payload))
             payload = json.dumps({
                 'timestamp': datetime.now().strftime("%H:%M:%S.%f"),
                 'acc_x': acc_x,
