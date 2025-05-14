@@ -52,13 +52,16 @@ class _HomePage extends State<HomePage> {
   }
 
   Future<void> _connectToMqtt() async {
-    _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
+
+    //Replace IP_ADDRESS with the actual MQTT broker IP
+    _client = MqttServerClient.withPort('IP_ADDRESS', 'flutter_client', 1883);
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
 
     try {
       await _client.connect();
+      //Replace 'wearable/sensor_data' with the topic your device/watch publishes to
       _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
