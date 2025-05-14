@@ -129,7 +129,6 @@ class _ProfileSetUPState extends State<ProfileSetUp> {
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          // hintText: hint,
           fillColor: Colors.white,
           filled: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

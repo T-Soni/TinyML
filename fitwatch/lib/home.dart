@@ -86,28 +86,18 @@ void _startCollection(String activity) {
     setState(() {
       _currentActivity = activity;
       _isCollecting = true;
-    //   _newDataBuffer.clear();
-    // });
-
-    // // Subscribe only when starting collection
-    // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
-    // _mqttSubscription = _client.updates?.listen((messages) {
-    //   final message = messages[0].payload as MqttPublishMessage;
-    //   final payload = MqttPublishPayload.bytesToStringAsString(message.payload.message);
-    //   _updateData(payload);
+    
     });
   }
 
   void _stopCollection() {
-    // Unsubscribe when stopping
-    // _mqttSubscription?.cancel();
-    // _client.unsubscribe('wearable/sensor_data');
+    
 
     setState(() {
       _isCollecting = false;
       // Merge buffer with main history
       _dataHistory.insertAll(0, _newDataBuffer);
-      _newDataBuffer.clear(); // Clear the buffer
+      _newDataBuffer.clear(); 
       _saveData();
     });
 
@@ -121,33 +111,10 @@ void _startCollection(String activity) {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
-        // _dataHistory.insert(0, {
-        //   'timestamp': data['timestamp'],
-        //   'acc_x': data['acc_x'],
-        //   'acc_y': data['acc_y'],
-        //   'acc_z': data['acc_z'],
-        //   'gyro_x': data['gyro_x'],
-        //   'gyro_y': data['gyro_y'],
-        //   'gyro_z': data['gyro_z'],
-        //   'activity': data['activity'],
-        // });
-        // _saveData(); // Save to SharedPreferences
-
-        // final newEntry = {
-        //   ...data,
-        //   'activity': _isCollecting ? _currentActivity : data['activity'],
-        // };
-
-        // if (_isCollecting) {
-        //   _newDataBuffer.insert(0, newEntry);
-        // } else {
-        //   _dataHistory.insert(0, newEntry);
-        //   _saveData();
-        // }
 
         _newDataBuffer.insert(0, {
           ...data,
-          'activity': _currentActivity!, // Guaranteed to exist
+          'activity': _currentActivity!, 
         });
       });
     } catch (e) {
@@ -189,8 +156,6 @@ void _startCollection(String activity) {
       body:IndexedStack(
         index: currentPageIndex,
         children: [
-          // DataLogs(dataHistory: _dataHistory, status: _status),
-          // AnnotateActivity(),
           DataLogs(
             dataHistory: _isCollecting 
                 ? [..._newDataBuffer, ..._dataHistory] 

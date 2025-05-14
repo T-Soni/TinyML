@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AnnotateActivity extends StatefulWidget {
-  // const AnnotateActivity({super.key});
-
   final Function(String) onStart;
   final Function() onStop;
 
@@ -21,8 +19,8 @@ class AnnotateActivity extends StatefulWidget {
 class _AnnotateActivityState extends State<AnnotateActivity> {
   String? _selectedActivity;
 
-   bool _isCollecting = false;
-  
+  bool _isCollecting = false;
+
   void _handleActivitySelect(String activity) {
     setState(() {
       _selectedActivity = activity;
@@ -85,124 +83,7 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
           // ),
         ],
       ),
-      // backgroundColor: Colors.blue.shade50,
-      // body: Padding(
-      //   padding: const EdgeInsets.all(20.0),
-      //   child: Column(
-      //     mainAxisAlignment: MainAxisAlignment.center,
-      //     children: [
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'WALKING',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.blue, const Color.fromARGB(255, 9, 61, 104)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           const SizedBox(height: 10,),
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'WALKING UPSTAIRS',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.green, const Color.fromARGB(255, 31, 96, 33)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           const SizedBox(height: 10,),
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'WALKING DOWNSTAIRS',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.red, const Color.fromARGB(255, 131, 29, 22)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           const SizedBox(height: 10,),
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'SITTING',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.amber, const Color.fromARGB(255, 136, 103, 5)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           const SizedBox(height: 10,),
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'STANDING',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.orange, const Color.fromARGB(255, 130, 79, 1)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           const SizedBox(height: 10,),
-      //       RaisedGradientButton(
-      //           child: Text(
-      //             'LAYING',
-      //             style: TextStyle(color: Colors.white, fontSize: 25),
-      //           ),
-      //           gradient: LinearGradient(
-      //             colors: <Color>[Colors.deepPurple, const Color.fromARGB(255, 52, 23, 102)],
-      //           ),
-      //           onPressed: () {
-      //             print('button clicked');
-      //           }),
-      //           SizedBox(height: 30,),
-      //           SingleChildScrollView(
-      //             scrollDirection: Axis.horizontal,
-      //             child: Row(
-      //               children: [
-      //                 ElevatedButton.icon(
-      //                         onPressed: () {
-      //                           Navigator.pushNamed(context, 'editProfile');
-      //                         },
-      //                         icon: Icon(Icons.start, color: Colors.white,),
-      //                         label: Text("Start", style: TextStyle(color: Colors.white),),
-      //                         style: ElevatedButton.styleFrom(
-      //                           backgroundColor: Color.fromRGBO(96, 181, 255, 1),
-      //                           padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-      //                           textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-      //                         ),
-      //                       ),
-      //                       SizedBox(width: 10,),
-      //                       ElevatedButton.icon(
-      //                         onPressed: () {
-      //                           Navigator.pushNamed(context, 'editProfile');
-      //                         },
-      //                         icon: Icon(Icons.stop, color: Colors.white,),
-      //                         label: Text("Stop", style: TextStyle(color: Colors.white),),
-      //                         style: ElevatedButton.styleFrom(
-      //                           backgroundColor: Color.fromRGBO(96, 181, 255, 1),
-      //                           padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-      //                           textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-      //                         ),
-      //                       )
-      //               ],
-      //             ),
-      //           )
-                
-      //     ],
-      //   ),
-      // ),
-
-
-
-       body: Padding(
+      body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
@@ -224,7 +105,10 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
     final activities = {
       'WALKING': [Colors.blue, const Color.fromARGB(255, 9, 61, 104)],
       'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 31, 96, 33)],
-      'WALKING_DOWNSTAIRS': [Colors.red, const Color.fromARGB(255, 131, 29, 22)],
+      'WALKING_DOWNSTAIRS': [
+        Colors.red,
+        const Color.fromARGB(255, 131, 29, 22)
+      ],
       'SITTING': [Colors.amber, const Color.fromARGB(255, 136, 103, 5)],
       'STANDING': [Colors.orange, const Color.fromARGB(255, 130, 79, 1)],
       'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 52, 23, 102)],
@@ -233,7 +117,7 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
     return activities.entries.map((entry) {
       final isSelected = _selectedActivity == entry.key;
       final isActive = _isCollecting && isSelected;
-      
+
       return Column(
         children: [
           RaisedGradientButton(
@@ -242,10 +126,6 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
               style: const TextStyle(color: Colors.white, fontSize: 25),
             ),
             gradient: LinearGradient(
-              // colors: isSelected
-              //     ? [Colors.blue, Colors.blue.shade800] // Selected color
-              //     : entry.value,
-
               colors: isActive
                   ? [Colors.lightBlue, Colors.blue] // Active collection color
                   : isSelected
@@ -260,7 +140,7 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
     }).toList();
   }
 
-Widget _buildCollectionStatus() {
+  Widget _buildCollectionStatus() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: _isCollecting
@@ -283,11 +163,9 @@ Widget _buildCollectionStatus() {
       child: Row(
         children: [
           ElevatedButton.icon(
-            // onPressed: !_isCollecting ? () => _handleStartPressed(context) : null,
-            // icon: const Icon(Icons.start, color: Colors.white),
             onPressed: () => _handleStartPressed(context),
             icon: Icon(
-              Icons.play_arrow, 
+              Icons.play_arrow,
               color: Colors.white,
             ),
             label: const Text("Start", style: TextStyle(color: Colors.white)),
@@ -313,75 +191,38 @@ Widget _buildCollectionStatus() {
         ],
       ),
     );
-  //   return Column(
-  //   children: [
-  //     if (_isCollecting)
-  //       Text(
-  //         "Collecting: ${_selectedActivity!.replaceAll('_', ' ')}",
-  //         style: TextStyle(
-  //           color: Colors.green,
-  //           fontSize: 18,
-  //           fontWeight: FontWeight.bold,
-  //         ),
-  //       ),
-  //     SizedBox(height: 10),
-  //     SingleChildScrollView(
-  //       scrollDirection: Axis.horizontal,
-  //       child: Row(
-  //         children: [
-  //           ElevatedButton.icon(
-  //             onPressed: !_isCollecting 
-  //                 ? () => _handleStartPressed(context) 
-  //                 : null,
-  //             icon: Icon(Icons.play_arrow, color: Colors.white),
-  //             label: Text("Start", style: TextStyle(color: Colors.white)),
-  //           ),
-  //           SizedBox(width: 10),
-  //           ElevatedButton.icon(
-  //             onPressed: _isCollecting ? _handleStopPressed : null,
-  //             icon: Icon(Icons.stop, color: Colors.white),
-  //             label: Text("Stop", style: TextStyle(color: Colors.white)),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   ],
-  // );
   }
 }
 
-  Widget userData(String key, String value) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              key,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w500,
-              ),
+Widget userData(String key, String value) {
+  return Card(
+    elevation: 4,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            key,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
             ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
-// }
-
-
+    ),
+  );
+}

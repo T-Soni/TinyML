@@ -99,7 +99,6 @@ class _RegisterState extends State<Register> {
                             child: Text(
                               'Sign In',
                               style: TextStyle(
-                                //decoration: TextDecoration.underline,
                                 fontSize: 18,
                                 color: Colors.white,
                               ),

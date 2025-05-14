@@ -5,7 +5,6 @@ class RaisedGradientButton extends StatelessWidget {
   final Gradient gradient;
   final double width;
   final double height;
-  // final Function onPressed;
   final VoidCallback onPressed;
 
 
