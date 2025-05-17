@@ -56,7 +56,7 @@ class _HomePage extends State<HomePage> {
 
     //Replace IP_ADDRESS with the actual MQTT broker IP
     _client = MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
-    // _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
+    
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
