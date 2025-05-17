@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fitwatch/activityPage.dart';
+import 'package:fitwatch/analysis.dart';
 import 'package:fitwatch/dataLogs.dart';
 import 'package:fitwatch/profilePage.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +55,8 @@ class _HomePage extends State<HomePage> {
   Future<void> _connectToMqtt() async {
 
     //Replace IP_ADDRESS with the actual MQTT broker IP
-    _client = MqttServerClient.withPort('IP_ADDRESS', 'flutter_client', 1883);
+    _client = MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
+    // _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
@@ -62,7 +64,8 @@ class _HomePage extends State<HomePage> {
     try {
       await _client.connect();
       //Replace 'wearable/sensor_data' with the topic your device/watch publishes to
-      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+      // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+      _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
         final payload = MqttPublishPayload.bytesToStringAsString(message.payload.message);
@@ -127,8 +130,18 @@ void _startCollection(String activity) {
 
   @override
   Widget build(BuildContext context) {
+    print('ANALYSIS SCREEN DATA CHECK:');
+print('Total points: ${_isCollecting 
+    ? _newDataBuffer.length + _dataHistory.length 
+    : _dataHistory.length}');
+if (_dataHistory.isNotEmpty) {
+  print('First point acc_x: ${_dataHistory.first['acc_x']}');
+}
     final ThemeData theme = Theme.of(context);
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+      ),
       bottomNavigationBar: NavigationBar(
         onDestinationSelected: (int index) {
           if (!mounted) return;
@@ -150,6 +163,10 @@ void _startCollection(String activity) {
             label: 'Activity',
           ),
           NavigationDestination(
+            selectedIcon: Icon(Icons.analytics)
+            ,icon: Icon(Icons.analytics_outlined),
+            label: 'Analysis'),
+          NavigationDestination(
             selectedIcon: Icon(Icons.person),
             icon: Icon(Icons.person_outline),
             label: 'Profile',
@@ -168,6 +185,13 @@ void _startCollection(String activity) {
           AnnotateActivity(
             onStart: _startCollection,
             onStop: _stopCollection,
+          ),
+          
+          AnalysisScreen(
+            dataHistory:_isCollecting 
+              ? [..._newDataBuffer, ..._dataHistory]
+              : _dataHistory,
+            status: _status,
           ),
           Profile(),
           

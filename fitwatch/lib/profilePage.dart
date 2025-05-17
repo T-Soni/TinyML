@@ -36,24 +36,24 @@ class _ProfileState extends State<Profile> {
   @override
   Widget build(BuildContext context) {
   return Scaffold(
-    appBar: AppBar(
-      backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
-      title: const Text(
-        'User Profile',
-        style: TextStyle(
-          fontSize: 25,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
-      actions: [
-        // Optional network status icon
-        // Icon(
-        //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
-        //   color: _status == "Connected" ? Colors.green : Colors.red,
-        // ),
-      ],
-    ),
+    // appBar: AppBar(
+    //   backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+    //   title: const Text(
+    //     'User Profile',
+    //     style: TextStyle(
+    //       fontSize: 25,
+    //       fontWeight: FontWeight.w600,
+    //       color: Colors.white,
+    //     ),
+    //   ),
+    //   actions: [
+    //     // Optional network status icon
+    //     // Icon(
+    //     //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
+    //     //   color: _status == "Connected" ? Colors.green : Colors.red,
+    //     // ),
+    //   ],
+    // ),
     // backgroundColor: const Color.fromRGBO(245, 251, 255, 1.0), // Light background
     body: Padding(
       padding: const EdgeInsets.all(20.0),

@@ -84,20 +84,20 @@ class DataLogs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color.fromRGBO(96, 181, 255, 1),
-        title: const Text('Sensor Data', style: TextStyle(
-          fontSize: 25, 
-          fontWeight: FontWeight.w600, 
-          color: Colors.white),
-        ),
-        actions: [
-          Icon(
-            status == "Connected" ? Icons.wifi : Icons.wifi_off,
-            color: status == "Connected" ? Colors.green : Colors.red,
-          ),
-        ],
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: Color.fromRGBO(96, 181, 255, 1),
+      //   title: const Text('Sensor Data', style: TextStyle(
+      //     fontSize: 25, 
+      //     fontWeight: FontWeight.w600, 
+      //     color: Colors.white),
+      //   ),
+      //   actions: [
+      //     Icon(
+      //       status == "Connected" ? Icons.wifi : Icons.wifi_off,
+      //       color: status == "Connected" ? Colors.green : Colors.red,
+      //     ),
+      //   ],
+      // ),
       body: Column(
         children: [
           Padding(

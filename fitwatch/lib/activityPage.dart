@@ -65,80 +65,141 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
-        title: const Text(
-          'Activity',
-          style: TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          // Optional network status icon
-          // Icon(
-          //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
-          //   color: _status == "Connected" ? Colors.green : Colors.red,
-          // ),
-        ],
-      ),
+      // appBar: AppBar(
+      //   backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+      //   title: const Text(
+      //     'Activity',
+      //     style: TextStyle(
+      //       fontSize: 25,
+      //       fontWeight: FontWeight.w600,
+      //       color: Colors.white,
+      //     ),
+      //   ),
+      //   actions: [
+      //     // Optional network status icon
+      //     // Icon(
+      //     //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
+      //     //   color: _status == "Connected" ? Colors.green : Colors.red,
+      //     // ),
+      //   ],
+      // ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // Activity Buttons
-            ..._buildActivityButtons(),
-            const SizedBox(height: 30),
-            // Collection Status
-            _buildCollectionStatus(),
-            const SizedBox(height: 20),
-            // Start/Stop Buttons
-            _buildControlButtons(),
-          ],
+        child: SingleChildScrollView(
+          child: Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height - 230,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Activity Buttons
+                ..._buildActivityButtons(),
+                const SizedBox(height: 30),
+                // Collection Status
+                _buildCollectionStatus(),
+                const SizedBox(height: 20),
+                // Start/Stop Buttons
+                _buildControlButtons(),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
+  // List<Widget> _buildActivityButtons() {
+  //   final activities = {
+  //     'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
+  //     'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 174, 220, 176)],
+  //     'WALKING_DOWNSTAIRS': [
+  //       Colors.red,
+  //       const Color.fromARGB(255, 211, 156, 152)
+  //     ],
+  //     'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
+  //     'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
+  //     'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
+  //   };
+
+  //   return activities.entries.map((entry) {
+  //     final isSelected = _selectedActivity == entry.key;
+  //     final isActive = _isCollecting && isSelected;
+
+  //     return Column(
+  //       children: [
+          
+  //             RaisedGradientButton(
+  //               child: Text(
+  //                 entry.key.replaceAll('_', ' '),
+  //                 style: const TextStyle(color: Colors.white, fontSize: 25),
+  //               ),
+  //               gradient: LinearGradient(
+  //                 colors: isActive
+  //                     ? [Colors.lightBlue, Colors.blue] // Active collection color
+  //                     : isSelected
+  //                         ? [Colors.blue, Colors.blue.shade800] // Selected color
+  //                         : entry.value, // Default color
+  //               ),
+  //               onPressed: () => _handleActivitySelect(entry.key),
+  //             ),
+              
+            
+  //         const SizedBox(height: 10),
+  //       ],
+  //     );
+  //   }).toList();
+  // }
   List<Widget> _buildActivityButtons() {
-    final activities = {
-      'WALKING': [Colors.blue, const Color.fromARGB(255, 9, 61, 104)],
-      'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 31, 96, 33)],
-      'WALKING_DOWNSTAIRS': [
-        Colors.red,
-        const Color.fromARGB(255, 131, 29, 22)
-      ],
-      'SITTING': [Colors.amber, const Color.fromARGB(255, 136, 103, 5)],
-      'STANDING': [Colors.orange, const Color.fromARGB(255, 130, 79, 1)],
-      'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 52, 23, 102)],
-    };
+  final activities = {
+    'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
+    'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 174, 220, 176)],
+    'WALKING_DOWNSTAIRS': [Colors.red, const Color.fromARGB(255, 211, 156, 152)],
+    'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
+    'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
+    'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
+  };
 
-    return activities.entries.map((entry) {
-      final isSelected = _selectedActivity == entry.key;
-      final isActive = _isCollecting && isSelected;
+  List<Widget> buttonRows = [];
+  List<Widget> currentRow = [];
 
-      return Column(
-        children: [
-          RaisedGradientButton(
+  activities.entries.toList().asMap().forEach((index, entry) {
+    final isSelected = _selectedActivity == entry.key;
+    final isActive = _isCollecting && isSelected;
+
+    currentRow.add(
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: RaisedGradientButton(
             child: Text(
               entry.key.replaceAll('_', ' '),
-              style: const TextStyle(color: Colors.white, fontSize: 25),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 20),
             ),
             gradient: LinearGradient(
               colors: isActive
-                  ? [Colors.lightBlue, Colors.blue] // Active collection color
+                  ? [const Color.fromARGB(255, 3, 3, 93), const Color.fromARGB(255, 63, 91, 202)]
                   : isSelected
-                      ? [Colors.blue, Colors.blue.shade800] // Selected color
-                      : entry.value, // Default color
+                      ? [const Color.fromARGB(255, 3, 3, 93), const Color.fromARGB(255, 63, 91, 202)]
+                      : entry.value,
             ),
             onPressed: () => _handleActivitySelect(entry.key),
           ),
-          const SizedBox(height: 10),
-        ],
-      );
-    }).toList();
-  }
+        ),
+      ),
+    );
+
+    // If 2 buttons are added or it's the last item, create a row
+    if (currentRow.length == 2 || index == activities.length - 1) {
+      buttonRows.add(Row(children: currentRow));
+      buttonRows.add(const SizedBox(height: 10)); // Add spacing between rows
+      currentRow = [];
+    }
+  });
+
+  return buttonRows;
+}
+
 
   Widget _buildCollectionStatus() {
     return AnimatedSwitcher(
