@@ -18,7 +18,7 @@ class AnalysisScreen extends StatefulWidget {
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
   int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyrometer
-final int _displayPoints = 50;
+  final int _displayPoints = 50;
   @override
   Widget build(BuildContext context) {
     final List<FlSpot> accX = [];
@@ -27,7 +27,7 @@ final int _displayPoints = 50;
     final List<FlSpot> gyroX = [];
     final List<FlSpot> gyroY = [];
     final List<FlSpot> gyroZ = [];
-  // if (widget.dataHistory.isNotEmpty && widget.dataHistory.length >= _displayPoints) {
+    // if (widget.dataHistory.isNotEmpty && widget.dataHistory.length >= _displayPoints) {
     double maxY = -double.infinity;
     double minY = double.infinity;
     double gmaxY = -double.infinity;
@@ -35,8 +35,30 @@ final int _displayPoints = 50;
     // double maxY = 10, minY = -10; // Default ranges
     // double gmaxY = 10, gminY = -10;
 
-    // Display latest 26 entries in reverse
-    for (int i = 50; i >= 0; i--) {
+    int dataPointsLength =
+        (50 < widget.dataHistory.length) ? 50 : widget.dataHistory.length;
+    if (dataPointsLength == 0) {
+      return Material(
+        child: Expanded(
+            child: Container(
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Empty Data Set',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+              ),
+              Text('Start an activity now!')
+            ],
+          ),
+        )),
+      );
+    }
+    // Display latest entries in reverse
+    // for (int i = 50; i >= 0; i--) {
+    for (int i = dataPointsLength - 1; i >= 0; i--) {
       final data = widget.dataHistory[i];
       final x = _parseDouble(data['acc_x']);
       final y = _parseDouble(data['acc_y']);
@@ -63,7 +85,7 @@ final int _displayPoints = 50;
     minY -= 5;
     gmaxY += 5;
     gminY -= 5;
-  
+
     return Scaffold(
       // appBar: AppBar(title: const Text('Analysis')),
       body: SingleChildScrollView(
@@ -101,7 +123,7 @@ final int _displayPoints = 50;
                   Text("Gyrometer"),
                 ],
               ),
-              
+
               // Padding(
               //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
               // Card(
@@ -147,68 +169,70 @@ final int _displayPoints = 50;
                     height: 10,
                     width: 10,
                     decoration: BoxDecoration(
-                      color: Colors.blue,
-                      border: Border.all(
-                        color: Colors.black,
-                        width: 1,
-                      )
-                    ),
-                    
-                  ),const SizedBox(width: 8),
-    const Text("X"),const SizedBox(width: 8),
+                        color: Colors.blue,
+                        border: Border.all(
+                          color: Colors.black,
+                          width: 1,
+                        )),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("X"),
+                  const SizedBox(width: 8),
                   Container(
                     height: 10,
                     width: 10,
                     decoration: BoxDecoration(
-                      color: Colors.orange,
-                      border: Border.all(
-                        color: Colors.black,
-                        width: 1,
-                      )
-                    ),
-                    
-                  ),const SizedBox(width: 8),
-    const Text("Y"),const SizedBox(width: 8),
+                        color: Colors.orange,
+                        border: Border.all(
+                          color: Colors.black,
+                          width: 1,
+                        )),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("Y"),
+                  const SizedBox(width: 8),
                   Container(
                     height: 10,
                     width: 10,
                     decoration: BoxDecoration(
-                      color: Colors.green,
-                      border: Border.all(
-                        color: Colors.black,
-                        width: 1,
-                      )
-                    ),
-                    
-                  ),const SizedBox(width: 8),
-    const Text("Z"),
+                        color: Colors.green,
+                        border: Border.all(
+                          color: Colors.black,
+                          width: 1,
+                        )),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("Z"),
                 ],
               ),
-              if(selectedIndex == 0)
-              SensorChart(
-                xData: accX,
-                yData: accY,
-                zData: accZ,
-                minY: minY,
-                maxY: maxY,
-                showX: true,
-                showY: true,
-                showZ: true,
-              )else 
-              SensorChart(
-                xData: gyroX,
-                yData: gyroY,
-                zData: gyroZ,
-                minY: gminY,
-                maxY: maxY,
-                showX: true,
-                showY: true,
-                showZ: true,
-              )
+              if (selectedIndex == 0)
+                SensorChart(
+                  xData: accX,
+                  yData: accY,
+                  zData: accZ,
+                  minY: minY,
+                  maxY: maxY,
+                  showX: true,
+                  showY: true,
+                  showZ: true,
+                )
+              else
+                SensorChart(
+                  xData: gyroX,
+                  yData: gyroY,
+                  zData: gyroZ,
+                  minY: gminY,
+                  maxY: maxY,
+                  showX: true,
+                  showY: true,
+                  showZ: true,
+                ),
 
               // ),
-
-      
+              SizedBox(
+                height: 10,
+              ),
+              Text('Bar Chart'),
             ],
           ),
         ),

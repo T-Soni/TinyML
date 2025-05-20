@@ -1,4 +1,4 @@
-import 'package:fitwatch/utilities/gradientButton.dart';
+import 'package:fitwatch/widgets/gradientButton.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,141 +65,90 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
-      //   title: const Text(
-      //     'Activity',
-      //     style: TextStyle(
-      //       fontSize: 25,
-      //       fontWeight: FontWeight.w600,
-      //       color: Colors.white,
-      //     ),
-      //   ),
-      //   actions: [
-      //     // Optional network status icon
-      //     // Icon(
-      //     //   _status == "Connected" ? Icons.wifi : Icons.wifi_off,
-      //     //   color: _status == "Connected" ? Colors.green : Colors.red,
-      //     // ),
-      //   ],
-      // ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Container(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height - 230,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Activity Buttons
-                ..._buildActivityButtons(),
-                const SizedBox(height: 30),
-                // Collection Status
-                _buildCollectionStatus(),
-                const SizedBox(height: 20),
-                // Start/Stop Buttons
-                _buildControlButtons(),
-              ],
-            ),
+      body: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Activity Buttons
+              ..._buildActivityButtons(),
+              const SizedBox(height: 30),
+              // Collection Status
+              _buildCollectionStatus(),
+              const SizedBox(height: 20),
+              // Start/Stop Buttons
+              _buildControlButtons(),
+            ],
           ),
         ),
       ),
     );
   }
 
-  // List<Widget> _buildActivityButtons() {
-  //   final activities = {
-  //     'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
-  //     'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 174, 220, 176)],
-  //     'WALKING_DOWNSTAIRS': [
-  //       Colors.red,
-  //       const Color.fromARGB(255, 211, 156, 152)
-  //     ],
-  //     'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
-  //     'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
-  //     'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
-  //   };
-
-  //   return activities.entries.map((entry) {
-  //     final isSelected = _selectedActivity == entry.key;
-  //     final isActive = _isCollecting && isSelected;
-
-  //     return Column(
-  //       children: [
-          
-  //             RaisedGradientButton(
-  //               child: Text(
-  //                 entry.key.replaceAll('_', ' '),
-  //                 style: const TextStyle(color: Colors.white, fontSize: 25),
-  //               ),
-  //               gradient: LinearGradient(
-  //                 colors: isActive
-  //                     ? [Colors.lightBlue, Colors.blue] // Active collection color
-  //                     : isSelected
-  //                         ? [Colors.blue, Colors.blue.shade800] // Selected color
-  //                         : entry.value, // Default color
-  //               ),
-  //               onPressed: () => _handleActivitySelect(entry.key),
-  //             ),
-              
-            
-  //         const SizedBox(height: 10),
-  //       ],
-  //     );
-  //   }).toList();
-  // }
   List<Widget> _buildActivityButtons() {
-  final activities = {
-    'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
-    'WALKING_UPSTAIRS': [Colors.green, const Color.fromARGB(255, 174, 220, 176)],
-    'WALKING_DOWNSTAIRS': [Colors.red, const Color.fromARGB(255, 211, 156, 152)],
-    'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
-    'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
-    'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
-  };
+    final activities = {
+      'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
+      'WALKING_UPSTAIRS': [
+        Colors.green,
+        const Color.fromARGB(255, 174, 220, 176)
+      ],
+      'WALKING_DOWNSTAIRS': [
+        Colors.red,
+        const Color.fromARGB(255, 211, 156, 152)
+      ],
+      'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
+      'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
+      'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
+    };
 
-  List<Widget> buttonRows = [];
-  List<Widget> currentRow = [];
+    List<Widget> buttonRows = [];
+    List<Widget> currentRow = [];
 
-  activities.entries.toList().asMap().forEach((index, entry) {
-    final isSelected = _selectedActivity == entry.key;
-    final isActive = _isCollecting && isSelected;
+    activities.entries.toList().asMap().forEach((index, entry) {
+      final isSelected = _selectedActivity == entry.key;
+      final isActive = _isCollecting && isSelected;
 
-    currentRow.add(
-      Expanded(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: RaisedGradientButton(
-            child: Text(
-              entry.key.replaceAll('_', ' '),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 20),
+      currentRow.add(
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: RaisedGradientButton(
+              child: Text(
+                entry.key.replaceAll('_', ' '),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+              ),
+              gradient: LinearGradient(
+                colors: isActive
+                    ? [
+                        const Color.fromARGB(255, 3, 3, 93),
+                        const Color.fromARGB(255, 63, 91, 202)
+                      ]
+                    : isSelected
+                        ? [
+                            const Color.fromARGB(255, 3, 3, 93),
+                            const Color.fromARGB(255, 63, 91, 202)
+                          ]
+                        : entry.value,
+              ),
+              onPressed: () => _handleActivitySelect(entry.key),
             ),
-            gradient: LinearGradient(
-              colors: isActive
-                  ? [const Color.fromARGB(255, 3, 3, 93), const Color.fromARGB(255, 63, 91, 202)]
-                  : isSelected
-                      ? [const Color.fromARGB(255, 3, 3, 93), const Color.fromARGB(255, 63, 91, 202)]
-                      : entry.value,
-            ),
-            onPressed: () => _handleActivitySelect(entry.key),
           ),
         ),
-      ),
-    );
+      );
 
-    // If 2 buttons are added or it's the last item, create a row
-    if (currentRow.length == 2 || index == activities.length - 1) {
-      buttonRows.add(Row(children: currentRow));
-      buttonRows.add(const SizedBox(height: 10)); // Add spacing between rows
-      currentRow = [];
-    }
-  });
+      // If 2 buttons are added or it's the last item, create a row
+      if (currentRow.length == 2 || index == activities.length - 1) {
+        buttonRows.add(Row(children: currentRow));
+        buttonRows.add(const SizedBox(height: 10)); // Add spacing between rows
+        currentRow = [];
+      }
+    });
 
-  return buttonRows;
-}
-
+    return buttonRows;
+  }
 
   Widget _buildCollectionStatus() {
     return AnimatedSwitcher(
@@ -253,37 +202,4 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
       ),
     );
   }
-}
-
-Widget userData(String key, String value) {
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            key,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

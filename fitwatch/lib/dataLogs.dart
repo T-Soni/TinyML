@@ -4,7 +4,7 @@ class DataLogs extends StatelessWidget {
   final List<Map<String, dynamic>> dataHistory;
   final String status;
 
-  const DataLogs({Key? key, required this.dataHistory, required this.status}) 
+  const DataLogs({Key? key, required this.dataHistory, required this.status})
       : super(key: key);
 
   Widget _buildDataRow(Map<String, dynamic> data) {
@@ -87,8 +87,8 @@ class DataLogs extends StatelessWidget {
       // appBar: AppBar(
       //   backgroundColor: Color.fromRGBO(96, 181, 255, 1),
       //   title: const Text('Sensor Data', style: TextStyle(
-      //     fontSize: 25, 
-      //     fontWeight: FontWeight.w600, 
+      //     fontSize: 25,
+      //     fontWeight: FontWeight.w600,
       //     color: Colors.white),
       //   ),
       //   actions: [
@@ -125,7 +125,8 @@ class DataLogs extends StatelessWidget {
           const Divider(height: 1),
           const Padding(
             padding: EdgeInsets.all(8.0),
-            child: Text("HISTORY", style: TextStyle(fontWeight: FontWeight.bold)),
+            child:
+                Text("HISTORY", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
             child: ListView.builder(

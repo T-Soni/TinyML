@@ -53,10 +53,9 @@ class _HomePage extends State<HomePage> {
   }
 
   Future<void> _connectToMqtt() async {
-
     //Replace IP_ADDRESS with the actual MQTT broker IP
-    _client = MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
-    
+    _client = MqttServerClient.withPort('IP_ADDRESS', 'flutter_client', 1883);
+
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
@@ -64,11 +63,12 @@ class _HomePage extends State<HomePage> {
     try {
       await _client.connect();
       //Replace 'wearable/sensor_data' with the topic your device/watch publishes to
-      // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
-      _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
+      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+      // _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
-        final payload = MqttPublishPayload.bytesToStringAsString(message.payload.message);
+        final payload =
+            MqttPublishPayload.bytesToStringAsString(message.payload.message);
         if (!mounted) return;
         _updateData(payload);
       });
@@ -88,39 +88,33 @@ class _HomePage extends State<HomePage> {
     setState(() => _status = "Disconnected");
   }
 
-void _startCollection(String activity) {
+  void _startCollection(String activity) {
     setState(() {
       _currentActivity = activity;
       _isCollecting = true;
-    
     });
   }
 
   void _stopCollection() {
-    
-
     setState(() {
       _isCollecting = false;
       // Merge buffer with main history
       _dataHistory.insertAll(0, _newDataBuffer);
-      _newDataBuffer.clear(); 
+      _newDataBuffer.clear();
       _saveData();
     });
-
-    
   }
 
   void _updateData(String payload) {
-     if (!_isCollecting) return; // Critical: Ignore all data when not collecting
+    if (!_isCollecting) return; // Critical: Ignore all data when not collecting
 
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
-
         _newDataBuffer.insert(0, {
           ...data,
-          'activity': _currentActivity!, 
+          'activity': _currentActivity!,
         });
       });
     } catch (e) {
@@ -131,12 +125,11 @@ void _startCollection(String activity) {
   @override
   Widget build(BuildContext context) {
     print('ANALYSIS SCREEN DATA CHECK:');
-print('Total points: ${_isCollecting 
-    ? _newDataBuffer.length + _dataHistory.length 
-    : _dataHistory.length}');
-if (_dataHistory.isNotEmpty) {
-  print('First point acc_x: ${_dataHistory.first['acc_x']}');
-}
+    print(
+        'Total points: ${_isCollecting ? _newDataBuffer.length + _dataHistory.length : _dataHistory.length}');
+    if (_dataHistory.isNotEmpty) {
+      print('First point acc_x: ${_dataHistory.first['acc_x']}');
+    }
     final ThemeData theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
@@ -153,32 +146,44 @@ if (_dataHistory.isNotEmpty) {
         selectedIndex: currentPageIndex,
         destinations: const <Widget>[
           NavigationDestination(
-            selectedIcon: Icon(Icons.home),
-            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(
+              Icons.insights,
+              color: Colors.white,
+            ),
+            icon: Icon(Icons.insights_outlined),
             label: 'Data',
           ),
           NavigationDestination(
-            selectedIcon: Icon(Icons.label_important),
+            selectedIcon: Icon(
+              Icons.label_important,
+              color: Colors.white,
+            ),
             icon: Icon(Icons.label_important_outline),
             label: 'Activity',
           ),
           NavigationDestination(
-            selectedIcon: Icon(Icons.analytics)
-            ,icon: Icon(Icons.analytics_outlined),
-            label: 'Analysis'),
+              selectedIcon: Icon(
+                Icons.analytics,
+                color: Colors.white,
+              ),
+              icon: Icon(Icons.analytics_outlined),
+              label: 'Analysis'),
           NavigationDestination(
-            selectedIcon: Icon(Icons.person),
+            selectedIcon: Icon(
+              Icons.person,
+              color: Colors.white,
+            ),
             icon: Icon(Icons.person_outline),
             label: 'Profile',
           ),
         ],
       ),
-      body:IndexedStack(
+      body: IndexedStack(
         index: currentPageIndex,
         children: [
           DataLogs(
-            dataHistory: _isCollecting 
-                ? [..._newDataBuffer, ..._dataHistory] 
+            dataHistory: _isCollecting
+                ? [..._newDataBuffer, ..._dataHistory]
                 : _dataHistory,
             status: _status,
           ),
@@ -186,20 +191,18 @@ if (_dataHistory.isNotEmpty) {
             onStart: _startCollection,
             onStop: _stopCollection,
           ),
-          
           AnalysisScreen(
-            dataHistory:_isCollecting 
-              ? [..._newDataBuffer, ..._dataHistory]
-              : _dataHistory,
+            dataHistory: _isCollecting
+                ? [..._newDataBuffer, ..._dataHistory]
+                : _dataHistory,
             status: _status,
           ),
           Profile(),
-          
         ],
       ),
-          
     );
   }
+
   @override
   void dispose() {
     _mqttSubscription?.cancel();

@@ -1,81 +1,70 @@
-
 import 'package:flutter/material.dart';
-import 'package:fitwatch/main.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:shared_preferences/';
+import 'package:fitwatch/utilities/sharedPrefsUtils.dart';
 
-class Login extends StatefulWidget{
+class Login extends StatefulWidget {
   const Login({super.key});
 
   @override
   State<Login> createState() => _LoginState();
 }
 
-class _LoginState extends State<Login>
-{
+class _LoginState extends State<Login> {
   final uidController = TextEditingController();
   late String uid;
-  
+
   @override
   void dispose() {
     uidController.dispose();
     super.dispose();
   }
 
-  _saveUid() async{
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('uid', uid);
-  }
-
-  bool verifyUid(){
+  bool verifyUid() {
     uid = uidController.text;
     uid = uid.trim();
-    if(uid == "test1234"){
-      _saveUid();
+    if (uid == "test1234") {
+      saveUid(uid);
+      // _saveUid(uid);
       return true;
     }
-      
+
     return false;
   }
+
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(175, 221, 255, 1.0),
+      backgroundColor: Color.fromRGBO(188, 219, 242, 1),
       body: Container(
         width: double.infinity,
         child: Padding(
           padding: const EdgeInsets.all(15.0),
-          child: Stack(
-            children: [
-              Column(
+          child: Stack(children: [
+            Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text("NEW USER LOGIN",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),),
-                  SizedBox(height: 20,),
-                  TextField(
-                    controller: uidController,
-                    decoration: InputDecoration(
+                Text(
+                  "NEW USER LOGIN",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                TextField(
+                  controller: uidController,
+                  decoration: InputDecoration(
                       hintText: "UID",
                       fillColor: Colors.white,
                       filled: true,
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        // borderSide: BorderSide(color: Color.fromRGBO(255, 236, 219, 1), width: 2)
-                        borderSide: BorderSide(color: Colors.grey, width: 2)
-                      ),
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey, width: 2)),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: Color.fromRGBO(96, 181, 255, 1), width: 2)
-                      )
-                      
-                    ),
-                  ),
-                  
-                  
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: Color.fromRGBO(96, 181, 255, 1),
+                              width: 2))),
+                ),
               ],
             ),
             Positioned(
@@ -89,33 +78,34 @@ class _LoginState extends State<Login>
                   color: Colors.white,
                   elevation: 4,
                   child: IconButton(
-                    onPressed: (){
-                      if (verifyUid()){
+                    onPressed: () {
+                      if (verifyUid()) {
                         Navigator.pushNamed(context, 'profileSetUp');
-                     
-                      }
-                      else {
+                      } else {
                         showDialog(
-                          context: context, 
-                          builder: (context){
-                            return AlertDialog(
-                              content: Text("Please enter correct uid"),
-                            );
-                          }
-                          );
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Center(
+                                    child: Text(
+                                  "Invalid UID",
+                                  style: TextStyle(fontSize: 20),
+                                )),
+                                titlePadding: EdgeInsets.fromLTRB(0, 10, 0, 10),
+                                content: Text("Please enter correct uid"),
+                              );
+                            });
                       }
-                     
-                    }, 
+                    },
                     icon: Icon(Icons.arrow_forward),
                     iconSize: 28,
                     color: Color.fromRGBO(96, 181, 255, 1),
                     tooltip: "Set up Profile",
-                    ),
+                  ),
                 ),
               ),
-              )
-            ]
-          ),
+            )
+          ]),
         ),
       ),
     );

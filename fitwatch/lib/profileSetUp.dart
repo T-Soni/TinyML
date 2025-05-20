@@ -1,3 +1,5 @@
+import 'package:fitwatch/utilities/sharedPrefsUtils.dart';
+import 'package:fitwatch/widgets/detailsTextField.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,18 +18,8 @@ class _ProfileSetUPState extends State<ProfileSetUp> {
 
   final formkey = GlobalKey<FormState>();
 
-  late String name, age, height, weight;
+  // late String name, age, height, weight;
 
-  
-    Future<void> saveDetails() async{
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-  await prefs.setString('name', nameController.text);
-  await prefs.setString('age', ageController.text);
-  await prefs.setString('height', heightController.text);
-  await prefs.setString('weight', weightController.text);
-  print("values stored in shared prefs");
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,11 +56,11 @@ class _ProfileSetUPState extends State<ProfileSetUp> {
                               key: formkey,
                               child: Column(
                                 children: [
-                                  _buildTextField("Name", nameController),
-                                  _buildTextField("Age", ageController),
-                                  _buildTextField(
+                                  buildTextField("Name", nameController),
+                                  buildTextField("Age", ageController),
+                                  buildTextField(
                                       "Height (ft)", heightController),
-                                  _buildTextField(
+                                  buildTextField(
                                       "Weight (kg)", weightController),
                                 ],
                               ),
@@ -94,52 +86,22 @@ class _ProfileSetUPState extends State<ProfileSetUp> {
                 color: Colors.white,
                 elevation: 4,
                 child: IconButton(
-                  onPressed: () async{
-                    if(formkey.currentState!.validate()){
+                  onPressed: () async {
+                    if (formkey.currentState!.validate()) {
                       print("form validated");
-                      saveDetails();
-                    Navigator.pushNamed(context, 'home');
+                      saveDetails(nameController.text, ageController.text,
+                          heightController.text, weightController.text);
+                      Navigator.pushNamed(context, 'home');
                     }
-                    
                   },
                   icon: Icon(Icons.arrow_forward),
                   iconSize: 28,
                   color: Colors.black,
-                  tooltip: "Set up Profile",
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'this is a required field';
-          } else {
-            return null;
-          }
-        },
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          fillColor: Colors.white,
-          filled: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide:
-                BorderSide(color: Color.fromRGBO(96, 181, 255, 1), width: 2),
-          ),
-        ),
-        keyboardType:
-            (label == 'Name') ? TextInputType.text : TextInputType.number,
       ),
     );
   }

@@ -7,7 +7,6 @@ class RaisedGradientButton extends StatelessWidget {
   final double height;
   final VoidCallback onPressed;
 
-
   const RaisedGradientButton({
     super.key,
     required this.child,
@@ -17,7 +16,7 @@ class RaisedGradientButton extends StatelessWidget {
     this.width = 150.0,
     this.height = 80.0,
     required this.onPressed,
-  }) ;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,15 +25,15 @@ class RaisedGradientButton extends StatelessWidget {
       height: 80.0,
       // height: 50.0,
       decoration: BoxDecoration(
-        gradient: gradient, 
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-        BoxShadow(
-          color: Colors.grey.shade500,
-          offset: Offset(0.0, 1.5),
-          blurRadius: 1.5,
-        ),
-      ]),
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade500,
+              offset: Offset(0.0, 1.5),
+              blurRadius: 1.5,
+            ),
+          ]),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
