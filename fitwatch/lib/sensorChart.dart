@@ -12,7 +12,7 @@ class SensorChart extends StatelessWidget {
   final bool showZ;
 
   const SensorChart({
-    Key? key,
+    super.key,
     required this.xData,
     required this.yData,
     required this.zData,
@@ -21,7 +21,7 @@ class SensorChart extends StatelessWidget {
     this.showX = true,
     this.showY = false,
     this.showZ = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -25,7 +25,7 @@ class _HomePage extends State<HomePage> {
 
   String? _currentActivity;
   bool _isCollecting = false;
-  List<Map<String, dynamic>> _newDataBuffer = [];
+  final List<Map<String, dynamic>> _newDataBuffer = [];
 
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
 

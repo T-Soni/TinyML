@@ -4,8 +4,7 @@ class DataLogs extends StatelessWidget {
   final List<Map<String, dynamic>> dataHistory;
   final String status;
 
-  const DataLogs({Key? key, required this.dataHistory, required this.status})
-      : super(key: key);
+  const DataLogs({super.key, required this.dataHistory, required this.status});
 
   Widget _buildDataRow(Map<String, dynamic> data) {
     return Container(

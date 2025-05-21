@@ -34,7 +34,7 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color.fromRGBO(188, 219, 242, 1),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         child: Padding(
           padding: const EdgeInsets.all(15.0),

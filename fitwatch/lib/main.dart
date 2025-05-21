@@ -1,11 +1,9 @@
 import 'package:fitwatch/utilities/sharedPrefsUtils.dart';
 import 'package:flutter/material.dart';
 import 'package:fitwatch/loginPage.dart';
-import 'package:fitwatch/registerPage.dart';
 import 'package:fitwatch/profilePage.dart';
 import 'package:fitwatch/profileSetUp.dart';
 import 'package:fitwatch/home.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

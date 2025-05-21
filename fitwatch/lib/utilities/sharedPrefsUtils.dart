@@ -9,8 +9,9 @@ Future<String> getInitialRoute() async {
       (prefs.containsKey('height')) &&
       (prefs.containsKey('weight'))) {
     return 'home';
-  } else
+  } else {
     return 'login';
+  }
 }
 
 saveUid(String uid) async {

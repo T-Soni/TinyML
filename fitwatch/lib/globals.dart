@@ -1,4 +1,4 @@
-library fitwatch.globals;
+library;
 
 String name = "";
 String age = "";

@@ -1,7 +1,6 @@
 import 'package:fitwatch/utilities/sharedPrefsUtils.dart';
 import 'package:fitwatch/widgets/detailsTextField.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileSetUp extends StatefulWidget {
   const ProfileSetUp({super.key});

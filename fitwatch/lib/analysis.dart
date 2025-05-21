@@ -9,8 +9,8 @@ class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({
     required this.dataHistory,
     required this.status,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -40,7 +40,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (dataPointsLength == 0) {
       return Material(
         child: Expanded(
-            child: Container(
+            child: SizedBox(
           width: MediaQuery.of(context).size.width,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

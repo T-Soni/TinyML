@@ -115,11 +115,6 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: RaisedGradientButton(
-              child: Text(
-                entry.key.replaceAll('_', ' '),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 20),
-              ),
               gradient: LinearGradient(
                 colors: isActive
                     ? [
@@ -134,6 +129,11 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
                         : entry.value,
               ),
               onPressed: () => _handleActivitySelect(entry.key),
+              child: Text(
+                entry.key.replaceAll('_', ' '),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+              ),
             ),
           ),
         ),
