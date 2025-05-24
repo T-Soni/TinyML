@@ -23,14 +23,20 @@ class DataLogs extends StatelessWidget {
           ),
           _buildSensorChip(
               'A',
-              '${data['acc_x'].toStringAsFixed(1)}'
-                  '/${data['acc_y'].toStringAsFixed(1)}'
-                  '/${data['acc_z'].toStringAsFixed(1)}'),
+              '${(data['acc_X']??0.0).toStringAsFixed(1)}'
+                  '/${(data['acc_Y']??0.0).toStringAsFixed(1)}'
+                  '/${(data['acc_Z']??0.0).toStringAsFixed(1)}'),
+              // '${data['acc_X'].toStringAsFixed(1)}'
+              //     '/${data['acc_Y'].toStringAsFixed(1)}'
+              //     '/${data['acc_Z'].toStringAsFixed(1)}'),
           _buildSensorChip(
               'G',
-              '${data['gyro_x'].toStringAsFixed(1)}'
-                  '/${data['gyro_y'].toStringAsFixed(1)}'
-                  '/${data['gyro_z'].toStringAsFixed(1)}'),
+              '${(data['gyro_X']??0.0).toStringAsFixed(1)}'
+                  '/${(data['gyro_Y']??0.0).toStringAsFixed(1)}'
+                  '/${(data['gyro_Z']??0.0).toStringAsFixed(1)}'),
+              // '${data['gyro_X'].toStringAsFixed(1)}'
+              //     '/${data['gyro_Y'].toStringAsFixed(1)}'
+              //     '/${data['gyro_Z'].toStringAsFixed(1)}'),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -83,20 +89,20 @@ class DataLogs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   backgroundColor: Color.fromRGBO(96, 181, 255, 1),
-      //   title: const Text('Sensor Data', style: TextStyle(
-      //     fontSize: 25,
-      //     fontWeight: FontWeight.w600,
-      //     color: Colors.white),
-      //   ),
-      //   actions: [
-      //     Icon(
-      //       status == "Connected" ? Icons.wifi : Icons.wifi_off,
-      //       color: status == "Connected" ? Colors.green : Colors.red,
-      //     ),
-      //   ],
-      // ),
+      appBar: AppBar(
+        backgroundColor: Color.fromRGBO(182, 208, 231, 1),
+        title: const Text('Sensor Data', style: TextStyle(
+          fontSize: 25,
+          fontWeight: FontWeight.w600,
+          color: Colors.white),
+        ),
+        actions: [
+          Icon(
+            status == "Connected" ? Icons.wifi : Icons.wifi_off,
+            color: status == "Connected" ? Colors.green : Colors.red,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

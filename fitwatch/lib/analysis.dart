@@ -60,12 +60,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     // for (int i = 50; i >= 0; i--) {
     for (int i = dataPointsLength - 1; i >= 0; i--) {
       final data = widget.dataHistory[i];
-      final x = _parseDouble(data['acc_x']);
-      final y = _parseDouble(data['acc_y']);
-      final z = _parseDouble(data['acc_z']);
-      final gx = _parseDouble(data['gyro_x']);
-      final gy = _parseDouble(data['gyro_y']);
-      final gz = _parseDouble(data['gyro_z']);
+      final x = _parseDouble(data['acc_X']);
+      final y = _parseDouble(data['acc_Y']);
+      final z = _parseDouble(data['acc_Z']);
+      final gx = _parseDouble(data['gyro_X']);
+      final gy = _parseDouble(data['gyro_Y']);
+      final gz = _parseDouble(data['gyro_Z']);
 
       accX.add(FlSpot(50 - i.toDouble(), x));
       accY.add(FlSpot(50 - i.toDouble(), y));
@@ -232,7 +232,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               SizedBox(
                 height: 10,
               ),
-              Text('Bar Chart'),
+              SizedBox(height: 20),
+_buildActivityDurationChart(_calculateActivityDurations()),
             ],
           ),
         ),
@@ -256,4 +257,177 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (val is String) return double.tryParse(val) ?? 0.0;
     return 0.0;
   }
+
+  Map<String, Duration> _calculateActivityDurations() {
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final durations = <String, Duration>{
+    "walking": Duration.zero,
+    "walking_upstairs": Duration.zero,
+    "walking_downstairs": Duration.zero,
+    "sitting": Duration.zero,
+    "standing": Duration.zero,
+    "laying": Duration.zero,
+  };
+
+  // Filter and sort today's data
+  final todayData = widget.dataHistory.where((entry) {
+    final timestamp = DateTime.parse(entry['timestamp']);
+    return timestamp.isAfter(todayStart);
+  }).toList()..sort((a, b) => DateTime.parse(a['timestamp'])
+      .compareTo(DateTime.parse(b['timestamp'])));
+
+  String? currentActivity;
+  DateTime? activityStartTime;
+
+  for (final entry in todayData) {
+    final entryActivity = entry['activity']?.toString().toLowerCase();
+    if (!durations.containsKey(entryActivity)) continue;
+
+    if (currentActivity != entryActivity) {
+      if (currentActivity != null && activityStartTime != null) {
+        final duration = DateTime.parse(entry['timestamp']).difference(activityStartTime);
+        if (duration.inSeconds > 0) {
+          durations[currentActivity] = durations[currentActivity]! + duration;
+        }
+      }
+      currentActivity = entryActivity;
+      activityStartTime = DateTime.parse(entry['timestamp']);
+    }
+  }
+
+  return durations;
+}
+
+Color _getActivityColor(String activity) {
+  switch (activity) {
+    case "walking": return Colors.blue;
+    case "walking_upstairs": return Colors.green;
+    case "walking_downstairs": return Colors.red;
+    case "sitting": return Colors.amber;
+    case "standing": return Colors.orange;
+    case "laying": return Colors.deepPurple;
+    default: return Colors.grey;
+  }
+}
+
+Widget _buildActivityDurationChart(Map<String, Duration> activityDurations) {
+  const allActivities = [
+    "walking", "walking_upstairs", "walking_downstairs",
+    "sitting", "standing", "laying"
+  ];
+
+  final maxSeconds = activityDurations.values.fold<double>(0, 
+    (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
+
+  return Card(
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Today\'s Activity Duration',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 200,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                minY: 0,
+                maxY: maxSeconds * 1.2,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final activity = allActivities[group.x];
+                      final duration = Duration(seconds: rod.toY.round());
+                      String timeText;
+                      if (duration.inHours > 0) {
+                        timeText = '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
+                      } else if (duration.inMinutes > 0) {
+                        timeText = '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
+                      } else {
+                        timeText = '${duration.inSeconds}s';
+                      }
+                      return BarTooltipItem(
+                        '${activity.replaceAll('_', ' ')}\n$timeText',
+                        const TextStyle(color: Colors.white),
+                      );
+                    },
+                    tooltipMargin: 10,
+                    tooltipPadding: const EdgeInsets.all(8),
+                    tooltipBorder: BorderSide(color: Colors.grey.shade800),
+                    direction: TooltipDirection.top,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final activity = allActivities[value.toInt()];
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            activity.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join(' '),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        );
+                      },
+                      reservedSize: 42,
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      interval: maxSeconds > 60 ? (maxSeconds/5).roundToDouble() : 
+                               maxSeconds > 10 ? 10 : 1,
+                      getTitlesWidget: (value, meta) {
+                        final duration = Duration(seconds: value.toInt());
+                        if (duration.inHours > 0) {
+                          return Text('${duration.inHours}h', style: const TextStyle(fontSize: 10));
+                        } else if (duration.inMinutes > 0) {
+                          return Text('${duration.inMinutes}m', style: const TextStyle(fontSize: 10));
+                        } else {
+                          return Text('${duration.inSeconds}s', style: const TextStyle(fontSize: 10));
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                gridData: const FlGridData(show: true),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(color: Colors.grey),
+                ),
+                barGroups: allActivities.map((activity) {
+                  final seconds = activityDurations[activity]?.inSeconds.toDouble() ?? 0;
+                  return BarChartGroupData(
+                    x: allActivities.indexOf(activity),
+                    barRods: [
+                      BarChartRodData(
+                        toY: seconds,
+                        color: _getActivityColor(activity),
+                        width: 16,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }

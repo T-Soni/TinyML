@@ -1,3 +1,5 @@
+// _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
+// _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
 import 'dart:async';
 
 import 'package:fitwatch/activityPage.dart';
@@ -54,7 +56,9 @@ class _HomePage extends State<HomePage> {
 
   Future<void> _connectToMqtt() async {
     //Replace IP_ADDRESS with the actual MQTT broker IP
-    _client = MqttServerClient.withPort('IP_ADDRESS', 'flutter_client', 1883);
+
+    _client =
+        MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
 
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
@@ -62,9 +66,8 @@ class _HomePage extends State<HomePage> {
 
     try {
       await _client.connect();
-      //Replace 'wearable/sensor_data' with the topic your device/watch publishes to
-      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
-      // _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
+
+      _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
         final payload =
@@ -128,7 +131,7 @@ class _HomePage extends State<HomePage> {
     print(
         'Total points: ${_isCollecting ? _newDataBuffer.length + _dataHistory.length : _dataHistory.length}');
     if (_dataHistory.isNotEmpty) {
-      print('First point acc_x: ${_dataHistory.first['acc_x']}');
+      print('First point acc_x: ${_dataHistory.first['acc_X']}');
     }
     final ThemeData theme = Theme.of(context);
     return Scaffold(
