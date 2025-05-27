@@ -1,5 +1,3 @@
-// _client = MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
-// _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
 import 'dart:async';
 
 import 'package:fitwatch/activityPage.dart';
@@ -11,6 +9,10 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+
+import 'package:fitwatch/globals.dart' as globals;
+
+enum ConnectionType { bluetooth, mqtt }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,9 +26,11 @@ class _HomePage extends State<HomePage> {
   late MqttServerClient _client;
   String _status = "Disconnected";
   List<Map<String, dynamic>> _dataHistory = [];
+  ConnectionType? selectedConnection;
 
   String? _currentActivity;
   bool _isCollecting = false;
+
   final List<Map<String, dynamic>> _newDataBuffer = [];
 
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
@@ -35,7 +39,7 @@ class _HomePage extends State<HomePage> {
   void initState() {
     super.initState();
     _loadSavedData();
-    _connectToMqtt();
+    // _connectToMqtt();
   }
 
   Future<void> _loadSavedData() async {
@@ -51,22 +55,27 @@ class _HomePage extends State<HomePage> {
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString('sensor_data_history', jsonEncode(_dataHistory));
   }
 
   Future<void> _connectToMqtt() async {
+    setState(() {
+      globals.isConnecting = true;
+      _status = "Connecting...";
+    });
     //Replace IP_ADDRESS with the actual MQTT broker IP
 
     _client =
         MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
-
+        
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
 
     try {
       await _client.connect();
-
+      // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
       _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
@@ -77,13 +86,27 @@ class _HomePage extends State<HomePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _status = "Connection failed");
+      setState(() {
+        _status = "Connection failed";
+        globals.isConnecting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('MQTT Connection Failed')),
+      );
+      return;
     }
   }
 
   void _onConnected() {
     if (!mounted) return;
-    setState(() => _status = "Connected");
+    setState(() {
+      _status = "Connected";
+      globals.isConnecting = false;
+      globals.isConnected = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("MQTT Connected")),
+    );
   }
 
   void _onDisconnected() {
@@ -137,6 +160,30 @@ class _HomePage extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+        actions: [
+          PopupMenuButton<ConnectionType>(
+              initialValue: selectedConnection,
+              onSelected: (ConnectionType connection) {
+                setState(() {
+                  selectedConnection = connection;
+                });
+                if (connection == ConnectionType.mqtt) {
+                  //trigger MQTT connection
+                  _connectToMqtt();
+                }
+              },
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<ConnectionType>>[
+                    const PopupMenuItem<ConnectionType>(
+                      value: ConnectionType.mqtt,
+                      child: Text('Connect via MQTT'),
+                    ),
+                    const PopupMenuItem<ConnectionType>(
+                      value: ConnectionType.bluetooth,
+                      child: Text("Connect via Bluetooth"),
+                    )
+                  ])
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         onDestinationSelected: (int index) {
@@ -181,26 +228,33 @@ class _HomePage extends State<HomePage> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: currentPageIndex,
+      body: Column(
         children: [
-          DataLogs(
-            dataHistory: _isCollecting
-                ? [..._newDataBuffer, ..._dataHistory]
-                : _dataHistory,
-            status: _status,
+          if (globals.isConnecting) LinearProgressIndicator(color: Colors.white,),
+          Expanded(
+            child: IndexedStack(
+              index: currentPageIndex,
+              children: [
+                DataLogs(
+                  dataHistory: _isCollecting
+                      ? [..._newDataBuffer, ..._dataHistory]
+                      : _dataHistory,
+                  status: _status,
+                ),
+                AnnotateActivity(
+                  onStart: _startCollection,
+                  onStop: _stopCollection,
+                ),
+                AnalysisScreen(
+                  dataHistory: _isCollecting
+                      ? [..._newDataBuffer, ..._dataHistory]
+                      : _dataHistory,
+                  status: _status,
+                ),
+                Profile(),
+              ],
+            ),
           ),
-          AnnotateActivity(
-            onStart: _startCollection,
-            onStop: _stopCollection,
-          ),
-          AnalysisScreen(
-            dataHistory: _isCollecting
-                ? [..._newDataBuffer, ..._dataHistory]
-                : _dataHistory,
-            status: _status,
-          ),
-          Profile(),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:fitwatch/widgets/gradientButton.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fitwatch/globals.dart' as globals;
 
 class AnnotateActivity extends StatefulWidget {
   final Function(String) onStart;
@@ -173,7 +174,17 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
       child: Row(
         children: [
           ElevatedButton.icon(
-            onPressed: () => _handleStartPressed(context),
+            onPressed: () {
+              if(globals.isConnected){
+                 _handleStartPressed(context);
+              }
+              else{
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Waiting for the connection...")),
+                );
+              }
+             
+            } ,
             icon: Icon(
               Icons.play_arrow,
               color: Colors.white,
