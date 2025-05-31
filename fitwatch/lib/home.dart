@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:fitwatch/activityPage.dart';
 import 'package:fitwatch/analysis.dart';
 import 'package:fitwatch/dataLogs.dart';
 import 'package:fitwatch/profilePage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 
 import 'package:fitwatch/globals.dart' as globals;
 
@@ -22,6 +26,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePage extends State<HomePage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // late BuildContext _scaffoldContext;
   int currentPageIndex = 0;
   late MqttServerClient _client;
   String _status = "Disconnected";
@@ -34,6 +41,11 @@ class _HomePage extends State<HomePage> {
   final List<Map<String, dynamic>> _newDataBuffer = [];
 
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
+
+  List<ScanResult> _recordList = [];
+  StreamSubscription? _btStateSubscription;
+  bool _isScanning = false;
+  PersistentBottomSheetController? _bottomSheetController;
 
   @override
   void initState() {
@@ -59,6 +71,111 @@ class _HomePage extends State<HomePage> {
     await prefs.setString('sensor_data_history', jsonEncode(_dataHistory));
   }
 
+  Future<void> startScanning() async {
+    try {
+      _recordList.clear();
+      _isScanning = true;
+      setState(() {});
+
+      await FlutterBluePlus.stopScan();
+      await FlutterBluePlus.startScan(
+        timeout: Duration(seconds: 30),
+        androidUsesFineLocation: true,
+      );
+
+      FlutterBluePlus.scanResults.listen((results) {
+        bool updated = false;
+        for (var result in results) {
+          if (!_recordList
+              .any((r) => r.device.remoteId == result.device.remoteId)) {
+            _recordList.add(result);
+            updated = true;
+            print('Found ${result.device.advName}');
+          }
+        }
+        if (updated) {
+          setState(() {
+            if (_bottomSheetController == null) {
+              _bottomSheetController = _showDeviceListSheet();
+            }
+          });
+        }
+      });
+    } catch (e) {
+      print("Scan error: $e");
+    } finally {
+      _isScanning = false;
+      setState(() {});
+    }
+  }
+
+
+  Future<bool> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      final status = await Permission.locationWhenInUse.request();
+      return status.isGranted;
+    }
+    return true;
+  }
+
+  void _connectViaBluetooth() async {
+    // Initialize Bluetooth and check hardware support
+    if (await FlutterBluePlus.isSupported == false) {
+      print("Bluetooth not supported by this device");
+      return;
+    }
+
+    //Request location permissions
+    bool permissionGranted = await _requestPermissions();
+    if (!permissionGranted) return;
+
+    //Check if location services are enabled
+    bool isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!isLocationServiceEnabled) {
+      //show dialog and redirect to location settings
+      showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: Text("Location Services Off"),
+                content: Text(
+                    "Please tuen on location services (GPS) to scan Bluetooth devices."),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await Geolocator
+                          .openLocationSettings(); //opens device settings
+                    },
+                    child: Text("Open Settings"),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text("Cancel"),
+                  ),
+                ],
+              ));
+      return;
+    }
+
+// Handle Bluetooth state changes
+// note: if you have permissions issues you will get stuck at BluetoothAdapterState.unauthorized
+    _btStateSubscription = FlutterBluePlus.adapterState.listen((state) async {
+      if (state == BluetoothAdapterState.on) {
+        // Ready to scan/connect
+        print("Bluetooth is ON");
+        await startScanning();
+      } else if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      } else {
+        // Handle disabled state
+        print("Bluetooth is OFF");
+      }
+    });
+
+// cancel to prevent duplicate listeners
+    // subscription.cancel();
+  }
+
   Future<void> _connectToMqtt() async {
     setState(() {
       globals.isConnecting = true;
@@ -67,16 +184,17 @@ class _HomePage extends State<HomePage> {
     //Replace IP_ADDRESS with the actual MQTT broker IP
 
     _client =
-        MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
-        
+        MqttServerClient.withPort('192.168.29.16', 'flutter_client', 1883);
+    // MqttServerClient.withPort('192.168.0.141', 'flutter_client', 1883);
+
     _client.keepAlivePeriod = 30;
     _client.onConnected = _onConnected;
     _client.onDisconnected = _onDisconnected;
 
     try {
       await _client.connect();
-      // _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
-      _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
+      _client.subscribe('wearable/sensor_data', MqttQos.atLeastOnce);
+      // _client.subscribe('sensor/esp', MqttQos.atLeastOnce);
       _client.updates?.listen((messages) {
         final message = messages[0].payload as MqttPublishMessage;
         final payload =
@@ -157,7 +275,9 @@ class _HomePage extends State<HomePage> {
       print('First point acc_x: ${_dataHistory.first['acc_X']}');
     }
     final ThemeData theme = Theme.of(context);
+    // _scaffoldContext = context;
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
         actions: [
@@ -170,6 +290,9 @@ class _HomePage extends State<HomePage> {
                 if (connection == ConnectionType.mqtt) {
                   //trigger MQTT connection
                   _connectToMqtt();
+                }
+                if (connection == ConnectionType.bluetooth) {
+                  _connectViaBluetooth();
                 }
               },
               itemBuilder: (BuildContext context) =>
@@ -230,7 +353,10 @@ class _HomePage extends State<HomePage> {
       ),
       body: Column(
         children: [
-          if (globals.isConnecting) LinearProgressIndicator(color: Colors.white,),
+          if (globals.isConnecting || _isScanning)
+            LinearProgressIndicator(
+              color: Colors.white,
+            ),
           Expanded(
             child: IndexedStack(
               index: currentPageIndex,
@@ -260,8 +386,52 @@ class _HomePage extends State<HomePage> {
     );
   }
 
+ 
+  PersistentBottomSheetController? _showDeviceListSheet() {
+    return _scaffoldKey.currentState?.showBottomSheet(
+      elevation: 10,
+      (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.5,
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Available Devices', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 10),
+            Expanded(
+              child: _recordList.isEmpty
+                  ? Center(child: Text("No devices found"))
+                  : ListView.builder(
+                      itemCount: _recordList.length,
+                      itemBuilder: (context, index) {
+                        final device = _recordList[index].device;
+                        return Card(
+                          child: ListTile(
+                              title: Text(device.advName.isNotEmpty
+                                  ? device.advName
+                                  : 'Unknown Device'),
+                              subtitle: Text(device.remoteId.toString()),
+                              onTap: () {}),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+// async {
+  //   await _connectToDevice(device);
+  //   if (_bottomSheetController != null) {
+  //     _bottomSheetController!.close();
+  //     _bottomSheetController = null;
+  //   }
+  // },
+
   @override
   void dispose() {
+    _bottomSheetController?.close(); // Important!
+    _btStateSubscription?.cancel();
     _mqttSubscription?.cancel();
     _client.disconnect();
     super.dispose();
