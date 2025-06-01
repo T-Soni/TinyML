@@ -109,7 +109,6 @@ class _HomePage extends State<HomePage> {
     }
   }
 
-
   Future<bool> _requestPermissions() async {
     if (Platform.isAndroid) {
       final status = await Permission.locationWhenInUse.request();
@@ -174,6 +173,106 @@ class _HomePage extends State<HomePage> {
 
 // cancel to prevent duplicate listeners
     // subscription.cancel();
+  }
+
+
+
+  Future<void> _discoverServices(BluetoothDevice device) async {
+  try {
+    List<BluetoothService> services = await device.discoverServices(); //this returns a list of available GATT services
+    
+    // Find the specific service (FE00)
+    BluetoothService? targetService;
+    try {
+      targetService = services.firstWhere(
+        (service) => service.serviceUuid.toString().toUpperCase() == 'FE00'
+      );
+    } catch (e) {
+      print('FE00 service not found');
+      return;
+    }
+
+    print("Found service: ${targetService.serviceUuid}");
+
+    // Find the specific characteristic (FE01)
+    BluetoothCharacteristic? targetChar;
+    try {
+      targetChar = targetService.characteristics.firstWhere(
+        (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01'
+      );
+    } catch (e) {
+      print('FE01 characteristic not found');
+      return;
+    }
+
+    print("Found characteristic: ${targetChar.characteristicUuid}");
+
+    //checks if characteristic supports read
+    if (targetChar.properties.read) {
+      //reads the data (List<int>, i.e. raw bytes)
+      List<int> value = await targetChar.read();
+      
+      //converts each byte into a 2-digit hex string and joins them
+      String hexString = value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+      print('Hex data: $hexString');
+      
+      //Converts the bytes to a UTF-8 string, assuming it is JSON
+      String jsonString = String.fromCharCodes(value);
+      print('Raw JSON string: $jsonString');
+      
+      //try to parse the string into a JSON object
+      try {
+        dynamic jsonData = jsonDecode(jsonString);
+        print('Decoded JSON: $jsonData');
+      } catch (e) {
+        print('Error parsing JSON: $e');
+      }
+      
+      //Check if the characteristic supports notifications
+      if (targetChar.properties.notify) {
+        // Subscribes to real-time updates when new data arrives
+        targetChar.onValueReceived.listen((value) {
+          String newData = String.fromCharCodes(value);
+          print('New notification data: $newData');
+
+          try {
+            dynamic jsonData = jsonDecode(newData);
+            print('Decoded JSON from notification : $jsonData');
+          }catch(e){
+            print('Error parsing JSON from notifications: $e');
+          }
+        });
+        await targetChar.setNotifyValue(true);
+      }
+    } else {
+      print('Characteristic is not readable');
+    }
+    
+  } catch (e) {
+    print('Error discovering services: $e');
+  }
+}
+//Tap on any device -> stop the ongoing scanning process and then connect to the device
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    FlutterBluePlus.stopScan();
+    
+    try{
+      await device.connect();
+      await device.requestMtu(256);
+      device.connectionState.listen((BluetoothConnectionState state){
+      if(state == BluetoothConnectionState.connected) {
+        print("Device is connected!");
+        _discoverServices(device);
+      }
+      else{
+        print("Device is not connected.");
+      }
+    });
+    }catch (e) {
+      print("Error connecting to device: $e");
+    }
+    
+
   }
 
   Future<void> _connectToMqtt() async {
@@ -386,7 +485,6 @@ class _HomePage extends State<HomePage> {
     );
   }
 
- 
   PersistentBottomSheetController? _showDeviceListSheet() {
     return _scaffoldKey.currentState?.showBottomSheet(
       elevation: 10,
@@ -406,11 +504,18 @@ class _HomePage extends State<HomePage> {
                         final device = _recordList[index].device;
                         return Card(
                           child: ListTile(
-                              title: Text(device.advName.isNotEmpty
-                                  ? device.advName
-                                  : 'Unknown Device'),
-                              subtitle: Text(device.remoteId.toString()),
-                              onTap: () {}),
+                            title: Text(device.advName.isNotEmpty
+                                ? device.advName
+                                : 'Unknown Device'),
+                            subtitle: Text(device.remoteId.toString()),
+                            onTap: () async {
+                              await _connectToDevice(device);
+                              if (_bottomSheetController != null) {
+                                _bottomSheetController!.close();
+                                _bottomSheetController = null;
+                              }
+                            },
+                          ),
                         );
                       },
                     ),
@@ -420,13 +525,6 @@ class _HomePage extends State<HomePage> {
       ),
     );
   }
-// async {
-  //   await _connectToDevice(device);
-  //   if (_bottomSheetController != null) {
-  //     _bottomSheetController!.close();
-  //     _bottomSheetController = null;
-  //   }
-  // },
 
   @override
   void dispose() {
