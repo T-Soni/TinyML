@@ -7,3 +7,4 @@ String weight = "";
 String uid = "";
 bool isConnected = false;
 bool isConnecting = false;
+bool isConnectedBle = false;

@@ -175,7 +175,7 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
         children: [
           ElevatedButton.icon(
             onPressed: () {
-              if(globals.isConnected){
+              if(globals.isConnected || globals.isConnectedBle){
                  _handleStartPressed(context);
               }
               else{

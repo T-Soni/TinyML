@@ -46,6 +46,10 @@ class _HomePage extends State<HomePage> {
   StreamSubscription? _btStateSubscription;
   bool _isScanning = false;
   PersistentBottomSheetController? _bottomSheetController;
+  StreamSubscription<List<int>>? _bleDataSubscription;
+  bool _isSubscribed = false;
+  final _bleDataBuffer = <Map<String, dynamic>>[]; //Buffer for ble data
+  Timer? _bleBufferTimer;
 
   @override
   void initState() {
@@ -175,105 +179,205 @@ class _HomePage extends State<HomePage> {
     // subscription.cancel();
   }
 
-
-
   Future<void> _discoverServices(BluetoothDevice device) async {
-  try {
-    List<BluetoothService> services = await device.discoverServices(); //this returns a list of available GATT services
+    try {
+      List<BluetoothService> services = await device
+          .discoverServices(); //this returns a list of available GATT services
+
+      // Find the specific service (FE00)
+      BluetoothService? targetService;
+      try {
+        targetService = services.firstWhere((service) =>
+            service.serviceUuid.toString().toUpperCase() == 'FE00');
+      } catch (e) {
+        print('FE00 service not found');
+        return;
+      }
+
+      print("Found service: ${targetService.serviceUuid}");
+
+      // Find the specific characteristic (FE01)
+      BluetoothCharacteristic? targetChar;
+      try {
+        targetChar = targetService.characteristics.firstWhere(
+            (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01');
+      } catch (e) {
+        print('FE01 characteristic not found');
+        return;
+      }
+
+      print("Found characteristic: ${targetChar.characteristicUuid}");
+
+      //process initial read if available
+      if (targetChar.properties.read) {
+        await _processInitialBleRead(targetChar);
+      }
+
+      // Setup notifications for continuous data
+      if (targetChar.properties.notify && !_isSubscribed) {
+      await _setupBleNotifications(targetChar);
+    }
     
-    // Find the specific service (FE00)
-    BluetoothService? targetService;
-    try {
-      targetService = services.firstWhere(
-        (service) => service.serviceUuid.toString().toUpperCase() == 'FE00'
-      );
+
+      //   //checks if characteristic supports read
+      //   if (targetChar.properties.read) {
+      //     //reads the data (List<int>, i.e. raw bytes)
+      //     List<int> value = await targetChar.read();
+
+      //     //converts each byte into a 2-digit hex string and joins them
+      //     String hexString = value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+      //     print('Hex data: $hexString');
+
+      //     //Converts the bytes to a UTF-8 string, assuming it is JSON
+      //     String jsonString = String.fromCharCodes(value);
+      //     print('Raw JSON string: $jsonString');
+
+      //     //try to parse the string into a JSON object
+      //     try {
+      //       dynamic jsonData = jsonDecode(jsonString);
+      //       print('Decoded JSON: $jsonData');
+      //     } catch (e) {
+      //       print('Error parsing JSON: $e');
+      //     }
+
+      //     //Check if the characteristic supports notifications
+      //     if (targetChar.properties.notify) {
+      //       // Subscribes to real-time updates when new data arrives
+      //       targetChar.onValueReceived.listen((value) {
+      //         String newData = String.fromCharCodes(value);
+      //         print('New notification data: $newData');
+
+      //         try {
+      //           dynamic jsonData = jsonDecode(newData);
+      //           print('Decoded JSON from notification : $jsonData');
+      //         }catch(e){
+      //           print('Error parsing JSON from notifications: $e');
+      //         }
+      //       });
+      //       await targetChar.setNotifyValue(true);
+      //     }
+      //   } else {
+      //     print('Characteristic is not readable');
+      //   }
     } catch (e) {
-      print('FE00 service not found');
-      return;
+      print('Error discovering services: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('BLE Error: ${e.toString()}')),
+    );
     }
+  }
 
-    print("Found service: ${targetService.serviceUuid}");
-
-    // Find the specific characteristic (FE01)
-    BluetoothCharacteristic? targetChar;
+  Future<void> _processInitialBleRead(
+      BluetoothCharacteristic characteristic) async {
     try {
-      targetChar = targetService.characteristics.firstWhere(
-        (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01'
-      );
+      List<int> value = await characteristic.read();
+      _processIncomingBleData(value);
     } catch (e) {
-      print('FE01 characteristic not found');
-      return;
+      print('Error reading characteristic: $e');
     }
+  }
 
-    print("Found characteristic: ${targetChar.characteristicUuid}");
+  Future<void> _setupBleNotifications(BluetoothCharacteristic characteristic) async {
+  // Cancel any existing subscription
+  await _bleDataSubscription?.cancel();
+  
+  _bleDataSubscription = characteristic.onValueReceived.listen((value) {
+    _processIncomingBleData(value);
+  });
 
-    //checks if characteristic supports read
-    if (targetChar.properties.read) {
-      //reads the data (List<int>, i.e. raw bytes)
-      List<int> value = await targetChar.read();
-      
+  try {
+    await characteristic.setNotifyValue(true);
+    _isSubscribed = true;
+    print('BLE Notifications enabled');
+    
+    // Setup buffer processing for high-frequency data
+    _bleBufferTimer?.cancel();
+    _bleBufferTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+      if (_bleDataBuffer.isNotEmpty && _isCollecting) {
+        setState(() {
+          _newDataBuffer.insertAll(0, _bleDataBuffer);
+          _bleDataBuffer.clear();
+        });
+      }
+    });
+    
+  } catch (e) {
+    print('Error enabling BLE notifications: $e');
+  }
+}
+
+
+  void _processIncomingBleData(List<int> value) {
+    try {
       //converts each byte into a 2-digit hex string and joins them
-      String hexString = value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+      String hexString =
+          value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
       print('Hex data: $hexString');
-      
+
       //Converts the bytes to a UTF-8 string, assuming it is JSON
       String jsonString = String.fromCharCodes(value);
       print('Raw JSON string: $jsonString');
-      
+
       //try to parse the string into a JSON object
       try {
-        dynamic jsonData = jsonDecode(jsonString);
-        print('Decoded JSON: $jsonData');
+        dynamic jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+        // print('Decoded JSON: $jsonData');
+
+        // Add activity context if collecting
+        final Map<String, dynamic> dataWithContext = <String, dynamic>{
+          ...jsonData,
+          if(_isCollecting && _currentActivity != null)
+            // 'label' : _currentActivity!,
+            'activity' : _currentActivity!,
+          
+        };
+
+        // For debugging, print every 10th packet
+        if (_bleDataBuffer.length % 10 == 0){
+          print('BLE data received: $dataWithContext');
+        }
+
+        _bleDataBuffer.add(dataWithContext);
       } catch (e) {
         print('Error parsing JSON: $e');
       }
-      
-      //Check if the characteristic supports notifications
-      if (targetChar.properties.notify) {
-        // Subscribes to real-time updates when new data arrives
-        targetChar.onValueReceived.listen((value) {
-          String newData = String.fromCharCodes(value);
-          print('New notification data: $newData');
-
-          try {
-            dynamic jsonData = jsonDecode(newData);
-            print('Decoded JSON from notification : $jsonData');
-          }catch(e){
-            print('Error parsing JSON from notifications: $e');
-          }
-        });
-        await targetChar.setNotifyValue(true);
-      }
-    } else {
-      print('Characteristic is not readable');
+    } catch (e) {
+      print('Error processing BLE data: $e');
     }
-    
-  } catch (e) {
-    print('Error discovering services: $e');
   }
-}
+
 //Tap on any device -> stop the ongoing scanning process and then connect to the device
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    FlutterBluePlus.stopScan();
     
-    try{
+    try {
+      FlutterBluePlus.stopScan();
+
       await device.connect();
       await device.requestMtu(256);
-      device.connectionState.listen((BluetoothConnectionState state){
-      if(state == BluetoothConnectionState.connected) {
-        print("Device is connected!");
-        _discoverServices(device);
+      device.connectionState.listen((BluetoothConnectionState state) async {
+        if (state == BluetoothConnectionState.connected) {
+          print("Device is connected!");
+          globals.isConnectedBle = true;
+          _discoverServices(device);
+        } else if (state == BluetoothConnectionState.disconnected) {
+        print("Device disconnected");
+        await _cleanUpBleResources();
       }
-      else{
-        print("Device is not connected.");
-      }
-    });
-    }catch (e) {
+      });
+    } catch (e) {
       print("Error connecting to device: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Connection Error: ${e.toString()}')),
+    );
     }
-    
-
   }
+  //cleanup method
+Future<void> _cleanUpBleResources() async {
+  _bleBufferTimer?.cancel();
+  await _bleDataSubscription?.cancel();
+  _isSubscribed = false;
+  _bleDataBuffer.clear();
+}
 
   Future<void> _connectToMqtt() async {
     setState(() {
@@ -528,6 +632,7 @@ class _HomePage extends State<HomePage> {
 
   @override
   void dispose() {
+    _cleanUpBleResources();
     _bottomSheetController?.close(); // Important!
     _btStateSubscription?.cancel();
     _mqttSubscription?.cancel();

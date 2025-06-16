@@ -40,10 +40,12 @@ class DataLogs extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
+              // color: _getActivityColor(data['label']),
               color: _getActivityColor(data['activity']),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
+              // data['label'].toString().substring(0, 3).toUpperCase(),
               data['activity'].toString().substring(0, 3).toUpperCase(),
               style: const TextStyle(
                 color: Colors.white,
@@ -122,6 +124,7 @@ class DataLogs extends StatelessWidget {
                         'gyro_x': 0.0,
                         'gyro_y': 0.0,
                         'gyro_z': 0.0,
+                        // 'label': 'waiting'
                         'activity': 'waiting'
                       }),
               ],
