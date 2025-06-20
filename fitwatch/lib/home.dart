@@ -187,8 +187,10 @@ class _HomePage extends State<HomePage> {
       // Find the specific service (FE00)
       BluetoothService? targetService;
       try {
+        // targetService = services.firstWhere((service) =>
+        //     service.serviceUuid.toString().toUpperCase() == 'FE00');
         targetService = services.firstWhere((service) =>
-            service.serviceUuid.toString().toUpperCase() == 'FE00');
+    service.serviceUuid.toString().toLowerCase().contains("beb5483e"));
       } catch (e) {
         print('FE00 service not found');
         return;
@@ -199,8 +201,10 @@ class _HomePage extends State<HomePage> {
       // Find the specific characteristic (FE01)
       BluetoothCharacteristic? targetChar;
       try {
+        // targetChar = targetService.characteristics.firstWhere(
+        //     (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01');
         targetChar = targetService.characteristics.firstWhere(
-            (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01');
+    (c) => c.characteristicUuid.toString().toLowerCase().contains("beb5483e"));
       } catch (e) {
         print('FE01 characteristic not found');
         return;
@@ -307,44 +311,99 @@ class _HomePage extends State<HomePage> {
 }
 
 
-  void _processIncomingBleData(List<int> value) {
-    try {
-      //converts each byte into a 2-digit hex string and joins them
-      String hexString =
-          value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-      print('Hex data: $hexString');
+  // void _processIncomingBleData(List<int> value) {
+  //   try {
+  //     //converts each byte into a 2-digit hex string and joins them
+  //     String hexString =
+  //         value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+  //     print('Hex data: $hexString');
 
-      //Converts the bytes to a UTF-8 string, assuming it is JSON
-      String jsonString = String.fromCharCodes(value);
-      print('Raw JSON string: $jsonString');
+  //     //Converts the bytes to a UTF-8 string, assuming it is JSON
+  //     String jsonString = String.fromCharCodes(value);
+  //     print('Raw JSON string: $jsonString');
 
-      //try to parse the string into a JSON object
-      try {
-        dynamic jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-        // print('Decoded JSON: $jsonData');
+  //     //try to parse the string into a JSON object
+  //     try {
+  //       dynamic jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+  //       // print('Decoded JSON: $jsonData');
 
-        // Add activity context if collecting
-        final Map<String, dynamic> dataWithContext = <String, dynamic>{
-          ...jsonData,
-          if(_isCollecting && _currentActivity != null)
-            // 'label' : _currentActivity!,
-            'activity' : _currentActivity!,
+  //       // Add activity context if collecting
+  //       final Map<String, dynamic> dataWithContext = <String, dynamic>{
+  //         ...jsonData,
+  //         if(_isCollecting && _currentActivity != null)
+  //           // 'label' : _currentActivity!,
+  //           'activity' : _currentActivity!,
           
-        };
+  //       };
 
-        // For debugging, print every 10th packet
-        if (_bleDataBuffer.length % 10 == 0){
-          print('BLE data received: $dataWithContext');
-        }
+  //       // For debugging, print every 10th packet
+  //       if (_bleDataBuffer.length % 10 == 0){
+  //         print('BLE data received: $dataWithContext');
+  //       }
 
-        _bleDataBuffer.add(dataWithContext);
-      } catch (e) {
-        print('Error parsing JSON: $e');
-      }
-    } catch (e) {
-      print('Error processing BLE data: $e');
+  //       _bleDataBuffer.add(dataWithContext);
+  //     } catch (e) {
+  //       print('Error parsing JSON: $e');
+  //     }
+  //   } catch (e) {
+  //     print('Error processing BLE data: $e');
+  //   }
+  // }
+
+
+void _processIncomingBleData(List<int> value) {
+  try {
+    String dataString = String.fromCharCodes(value).trim();
+    print("Received CSV: $dataString");
+
+    List<String> fields = dataString.split(',');
+
+    if (fields.length != 13) {
+      print("Unexpected number of fields: ${fields.length}");
+      return;
     }
+
+    int batteryPercent = int.parse(fields[0]);
+    int imuTimestamp = int.parse(fields[1]);
+    int label = int.parse(fields[2]);
+    int stepCount = int.parse(fields[3]);
+    double distance = double.parse(fields[4]);
+    double speed = double.parse(fields[5]);
+    double accelMag = double.parse(fields[6]);
+    double accX = double.parse(fields[7]);
+    double accY = double.parse(fields[8]);
+    double accZ = double.parse(fields[9]);
+    double gyroX = double.parse(fields[10]);
+    double gyroY = double.parse(fields[11]);
+    double gyroZ = double.parse(fields[12]);
+
+    print("IMU: $imuTimestamp, Steps: $stepCount, Speed: ${speed.toStringAsFixed(2)} m/s");
+    print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
+    print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
+
+    // Optional: store data if _isCollecting is true
+    if (_isCollecting) {
+      _bleDataBuffer.add({
+        'timestamp': imuTimestamp,
+        'label': label,
+        'stepCount': stepCount,
+        'distance': distance,
+        'speed': speed,
+        'accelMag': accelMag,
+        'accX': accX,
+        'accY': accY,
+        'accZ': accZ,
+        'gyroX': gyroX,
+        'gyroY': gyroY,
+        'gyroZ': gyroZ,
+        'activity': _currentActivity ?? '',
+      });
+    }
+  } catch (e) {
+    print("Data processing error: $e");
   }
+}
+
 
 //Tap on any device -> stop the ongoing scanning process and then connect to the device
   Future<void> _connectToDevice(BluetoothDevice device) async {
