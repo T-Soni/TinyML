@@ -1,6 +1,7 @@
 import 'package:fitwatch/sensorChart.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class AnalysisScreen extends StatefulWidget {
   final List<Map<String, dynamic>> dataHistory;
@@ -32,6 +33,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     double minY = double.infinity;
     double gmaxY = -double.infinity;
     double gminY = double.infinity;
+    late double currMaxA;
+    late double currMaxG;
+    late double currMinA;
+    late double currMinG;
     // double maxY = 10, minY = -10; // Default ranges
     // double gmaxY = 10, gminY = -10;
 
@@ -75,10 +80,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       gyroY.add(FlSpot(50 - i.toDouble(), gy));
       gyroZ.add(FlSpot(50 - i.toDouble(), gz));
 
-      maxY = x > maxY ? x : maxY;
-      minY = x < minY ? x : minY;
-      gmaxY = gx > gmaxY ? gx : gmaxY;
-      gminY = gx < gminY ? gx : gminY;
+      currMaxA = max(x, max(y, x));
+      currMinA = min(x, min(y, z));
+      currMaxG = max(gx, max(gy, gz));
+      currMinG = min(gx, min(gy, gz));
+      maxY = currMaxA > maxY ? currMaxA + (currMaxA - currMinA) / 20 : maxY;
+      minY = currMinA < minY ? currMinA - (currMaxA - currMinA) / 20 : minY;
+      gmaxY = currMaxG > gmaxY ? currMaxG + (currMaxG - currMinG) / 20 : gmaxY;
+      gminY = currMinG < gminY ? currMinG - (currMaxG - currMinG) / 20 : gminY;
+      // maxY = x > maxY ? x : maxY;
+      // minY = x < minY ? x : minY;
+      // gmaxY = gx > gmaxY ? gx : gmaxY;
+      // gminY = gx < gminY ? gx : gminY;
     }
 
     maxY += 5;
@@ -222,7 +235,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   yData: gyroY,
                   zData: gyroZ,
                   minY: gminY,
-                  maxY: maxY,
+                  maxY: gmaxY,
                   showX: true,
                   showY: true,
                   showZ: true,
@@ -233,7 +246,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 height: 10,
               ),
               SizedBox(height: 20),
-_buildActivityDurationChart(_calculateActivityDurations()),
+              _buildActivityDurationChart(_calculateActivityDurations()),
             ],
           ),
         ),
@@ -259,175 +272,210 @@ _buildActivityDurationChart(_calculateActivityDurations()),
   }
 
   Map<String, Duration> _calculateActivityDurations() {
-  final now = DateTime.now();
-  final todayStart = DateTime(now.year, now.month, now.day);
-  final durations = <String, Duration>{
-    "walking": Duration.zero,
-    "walking_upstairs": Duration.zero,
-    "walking_downstairs": Duration.zero,
-    "sitting": Duration.zero,
-    "standing": Duration.zero,
-    "laying": Duration.zero,
-  };
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final durations = <String, Duration>{
+      "walking": Duration.zero,
+      "walking_upstairs": Duration.zero,
+      "walking_downstairs": Duration.zero,
+      "sitting": Duration.zero,
+      "standing": Duration.zero,
+      "laying": Duration.zero,
+    };
 
-  // Filter and sort today's data
-  final todayData = widget.dataHistory.where((entry) {
-    final timestamp = DateTime.parse(entry['timestamp']);
-    return timestamp.isAfter(todayStart);
-  }).toList()..sort((a, b) => DateTime.parse(a['timestamp'])
-      .compareTo(DateTime.parse(b['timestamp'])));
+    // Filter and sort today's data
+    final todayData = widget.dataHistory.where((entry) {
+      // final timestamp = DateTime.fromMillisecondsSinceEpoch(entry['timestamp']);
+      final timestamp = DateTime.parse(entry['timestamp']);
+      return timestamp.isAfter(todayStart);
+    }).toList()
+      ..sort((a, b) => DateTime.parse(a['timestamp'])
+          .compareTo(DateTime.parse(b['timestamp'])));
+    // ..sort((a, b) => DateTime.fromMillisecondsSinceEpoch(a['timestamp'])
+    //     .compareTo(DateTime.fromMillisecondsSinceEpoch(b['timestamp'])));
 
-  String? currentActivity;
-  DateTime? activityStartTime;
+    String? currentActivity;
+    DateTime? activityStartTime;
 
-  for (final entry in todayData) {
-    final entryActivity = entry['activity']?.toString().toLowerCase();
-    if (!durations.containsKey(entryActivity)) continue;
+    for (final entry in todayData) {
+      final entryActivity = entry['activity']?.toString().toLowerCase();
+      if (!durations.containsKey(entryActivity)) continue;
 
-    if (currentActivity != entryActivity) {
-      if (currentActivity != null && activityStartTime != null) {
-        final duration = DateTime.parse(entry['timestamp']).difference(activityStartTime);
-        if (duration.inSeconds > 0) {
-          durations[currentActivity] = durations[currentActivity]! + duration;
+      if (currentActivity != entryActivity) {
+        if (currentActivity != null && activityStartTime != null) {
+          final duration =
+              DateTime.parse(entry['timestamp']).difference(activityStartTime);
+          // final duration =
+          //     DateTime.fromMillisecondsSinceEpoch(entry['timestamp'])
+          //         .difference(activityStartTime!);
+
+          if (duration.inSeconds > 0) {
+            durations[currentActivity] = durations[currentActivity]! + duration;
+          }
         }
+        currentActivity = entryActivity;
+        activityStartTime =
+            // DateTime.fromMillisecondsSinceEpoch(entry['timestamp']);
+            activityStartTime = DateTime.parse(entry['timestamp']);
       }
-      currentActivity = entryActivity;
-      activityStartTime = DateTime.parse(entry['timestamp']);
+    }
+
+    return durations;
+  }
+
+  Color _getActivityColor(String activity) {
+    switch (activity) {
+      case "walking":
+        return Colors.blue;
+      case "walking_upstairs":
+        return Colors.green;
+      case "walking_downstairs":
+        return Colors.red;
+      case "sitting":
+        return Colors.amber;
+      case "standing":
+        return Colors.orange;
+      case "laying":
+        return Colors.deepPurple;
+      default:
+        return Colors.grey;
     }
   }
 
-  return durations;
-}
+  Widget _buildActivityDurationChart(Map<String, Duration> activityDurations) {
+    const allActivities = [
+      "walking",
+      "walking_upstairs",
+      "walking_downstairs",
+      "sitting",
+      "standing",
+      "laying"
+    ];
 
-Color _getActivityColor(String activity) {
-  switch (activity) {
-    case "walking": return Colors.blue;
-    case "walking_upstairs": return Colors.green;
-    case "walking_downstairs": return Colors.red;
-    case "sitting": return Colors.amber;
-    case "standing": return Colors.orange;
-    case "laying": return Colors.deepPurple;
-    default: return Colors.grey;
-  }
-}
+    final maxSeconds = activityDurations.values.fold<double>(
+        0, (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
 
-Widget _buildActivityDurationChart(Map<String, Duration> activityDurations) {
-  const allActivities = [
-    "walking", "walking_upstairs", "walking_downstairs",
-    "sitting", "standing", "laying"
-  ];
-
-  final maxSeconds = activityDurations.values.fold<double>(0, 
-    (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
-
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Today\'s Activity Duration',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                minY: 0,
-                maxY: maxSeconds * 1.2,
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final activity = allActivities[group.x];
-                      final duration = Duration(seconds: rod.toY.round());
-                      String timeText;
-                      if (duration.inHours > 0) {
-                        timeText = '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
-                      } else if (duration.inMinutes > 0) {
-                        timeText = '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
-                      } else {
-                        timeText = '${duration.inSeconds}s';
-                      }
-                      return BarTooltipItem(
-                        '${activity.replaceAll('_', ' ')}\n$timeText',
-                        const TextStyle(color: Colors.white),
-                      );
-                    },
-                    tooltipMargin: 10,
-                    tooltipPadding: const EdgeInsets.all(8),
-                    tooltipBorder: BorderSide(color: Colors.grey.shade800),
-                    direction: TooltipDirection.top,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final activity = allActivities[value.toInt()];
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            activity.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join(' '),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 10),
-                          ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Today\'s Activity Duration',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  minY: 0,
+                  maxY: maxSeconds * 1.2,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final activity = allActivities[group.x];
+                        final duration = Duration(seconds: rod.toY.round());
+                        String timeText;
+                        if (duration.inHours > 0) {
+                          timeText =
+                              '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
+                        } else if (duration.inMinutes > 0) {
+                          timeText =
+                              '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
+                        } else {
+                          timeText = '${duration.inSeconds}s';
+                        }
+                        return BarTooltipItem(
+                          '${activity.replaceAll('_', ' ')}\n$timeText',
+                          const TextStyle(color: Colors.white),
                         );
                       },
-                      reservedSize: 42,
+                      tooltipMargin: 10,
+                      tooltipPadding: const EdgeInsets.all(8),
+                      tooltipBorder: BorderSide(color: Colors.grey.shade800),
+                      direction: TooltipDirection.top,
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      interval: maxSeconds > 60 ? (maxSeconds/5).roundToDouble() : 
-                               maxSeconds > 10 ? 10 : 1,
-                      getTitlesWidget: (value, meta) {
-                        final duration = Duration(seconds: value.toInt());
-                        if (duration.inHours > 0) {
-                          return Text('${duration.inHours}h', style: const TextStyle(fontSize: 10));
-                        } else if (duration.inMinutes > 0) {
-                          return Text('${duration.inMinutes}m', style: const TextStyle(fontSize: 10));
-                        } else {
-                          return Text('${duration.inSeconds}s', style: const TextStyle(fontSize: 10));
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                gridData: const FlGridData(show: true),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: Colors.grey),
-                ),
-                barGroups: allActivities.map((activity) {
-                  final seconds = activityDurations[activity]?.inSeconds.toDouble() ?? 0;
-                  return BarChartGroupData(
-                    x: allActivities.indexOf(activity),
-                    barRods: [
-                      BarChartRodData(
-                        toY: seconds,
-                        color: _getActivityColor(activity),
-                        width: 16,
-                        borderRadius: BorderRadius.circular(4),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final activity = allActivities[value.toInt()];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              activity
+                                  .split('_')
+                                  .map((s) =>
+                                      s[0].toUpperCase() + s.substring(1, 1))
+                                  .join(''),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          );
+                        },
+                        reservedSize: 42,
                       ),
-                    ],
-                  );
-                }).toList(),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        interval: maxSeconds > 60
+                            ? (maxSeconds / 5).roundToDouble()
+                            : maxSeconds > 10
+                                ? 10
+                                : 1,
+                        getTitlesWidget: (value, meta) {
+                          final duration = Duration(seconds: value.toInt());
+                          if (duration.inHours > 0) {
+                            return Text('${duration.inHours}h',
+                                style: const TextStyle(fontSize: 10));
+                          } else if (duration.inMinutes > 0) {
+                            return Text('${duration.inMinutes}m',
+                                style: const TextStyle(fontSize: 10));
+                          } else {
+                            return Text('${duration.inSeconds}s',
+                                style: const TextStyle(fontSize: 10));
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  gridData: const FlGridData(show: true),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: Colors.grey),
+                  ),
+                  barGroups: allActivities.map((activity) {
+                    final seconds =
+                        activityDurations[activity]?.inSeconds.toDouble() ?? 0;
+                    return BarChartGroupData(
+                      x: allActivities.indexOf(activity),
+                      barRods: [
+                        BarChartRodData(
+                          toY: seconds,
+                          color: _getActivityColor(activity),
+                          width: 16,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

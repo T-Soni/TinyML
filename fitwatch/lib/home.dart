@@ -186,13 +186,24 @@ class _HomePage extends State<HomePage> {
 
       // Find the specific service (FE00)
       BluetoothService? targetService;
+      for (BluetoothService s in services) {
+        print("Service: ${s.serviceUuid}");
+        for (BluetoothCharacteristic c in s.characteristics) {
+          print("  Char: ${c.characteristicUuid}");
+        }
+      }
+
       try {
         // targetService = services.firstWhere((service) =>
         //     service.serviceUuid.toString().toUpperCase() == 'FE00');
-        targetService = services.firstWhere((service) =>
-    service.serviceUuid.toString().toLowerCase().contains("beb5483e"));
+        targetService = services.firstWhere((service) => service.serviceUuid
+            .toString()
+            .toLowerCase()
+            .replaceAll('-', '')
+            .contains("4fafc20"));
+        // 4fafc201-1fb5-459e-8fcc-c5c9c331914b
       } catch (e) {
-        print('FE00 service not found');
+        print('4fafc201-1fb5-459e-8fcc-c5c9c331914b service not found');
         return;
       }
 
@@ -203,10 +214,10 @@ class _HomePage extends State<HomePage> {
       try {
         // targetChar = targetService.characteristics.firstWhere(
         //     (c) => c.characteristicUuid.toString().toUpperCase() == 'FE01');
-        targetChar = targetService.characteristics.firstWhere(
-    (c) => c.characteristicUuid.toString().toLowerCase().contains("beb5483e"));
+        targetChar = targetService.characteristics.firstWhere((c) =>
+            c.characteristicUuid.toString().toLowerCase().contains("beb5483e"));
       } catch (e) {
-        print('FE01 characteristic not found');
+        print('beb5483e characteristic not found');
         return;
       }
 
@@ -219,9 +230,8 @@ class _HomePage extends State<HomePage> {
 
       // Setup notifications for continuous data
       if (targetChar.properties.notify && !_isSubscribed) {
-      await _setupBleNotifications(targetChar);
-    }
-    
+        await _setupBleNotifications(targetChar);
+      }
 
       //   //checks if characteristic supports read
       //   if (targetChar.properties.read) {
@@ -266,8 +276,8 @@ class _HomePage extends State<HomePage> {
     } catch (e) {
       print('Error discovering services: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('BLE Error: ${e.toString()}')),
-    );
+        SnackBar(content: Text('BLE Error: ${e.toString()}')),
+      );
     }
   }
 
@@ -281,35 +291,34 @@ class _HomePage extends State<HomePage> {
     }
   }
 
-  Future<void> _setupBleNotifications(BluetoothCharacteristic characteristic) async {
-  // Cancel any existing subscription
-  await _bleDataSubscription?.cancel();
-  
-  _bleDataSubscription = characteristic.onValueReceived.listen((value) {
-    _processIncomingBleData(value);
-  });
+  Future<void> _setupBleNotifications(
+      BluetoothCharacteristic characteristic) async {
+    // Cancel any existing subscription
+    await _bleDataSubscription?.cancel();
 
-  try {
-    await characteristic.setNotifyValue(true);
-    _isSubscribed = true;
-    print('BLE Notifications enabled');
-    
-    // Setup buffer processing for high-frequency data
-    _bleBufferTimer?.cancel();
-    _bleBufferTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
-      if (_bleDataBuffer.isNotEmpty && _isCollecting) {
-        setState(() {
-          _newDataBuffer.insertAll(0, _bleDataBuffer);
-          _bleDataBuffer.clear();
-        });
-      }
+    _bleDataSubscription = characteristic.onValueReceived.listen((value) {
+      _processIncomingBleData(value);
     });
-    
-  } catch (e) {
-    print('Error enabling BLE notifications: $e');
-  }
-}
 
+    try {
+      await characteristic.setNotifyValue(true);
+      _isSubscribed = true;
+      print('BLE Notifications enabled');
+
+      // Setup buffer processing for high-frequency data
+      _bleBufferTimer?.cancel();
+      _bleBufferTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+        if (_bleDataBuffer.isNotEmpty && _isCollecting) {
+          setState(() {
+            _newDataBuffer.insertAll(0, _bleDataBuffer);
+            _bleDataBuffer.clear();
+          });
+        }
+      });
+    } catch (e) {
+      print('Error enabling BLE notifications: $e');
+    }
+  }
 
   // void _processIncomingBleData(List<int> value) {
   //   try {
@@ -333,7 +342,7 @@ class _HomePage extends State<HomePage> {
   //         if(_isCollecting && _currentActivity != null)
   //           // 'label' : _currentActivity!,
   //           'activity' : _currentActivity!,
-          
+
   //       };
 
   //       // For debugging, print every 10th packet
@@ -350,64 +359,65 @@ class _HomePage extends State<HomePage> {
   //   }
   // }
 
+  void _processIncomingBleData(List<int> value) {
+    try {
+      String dataString = String.fromCharCodes(value).trim();
+      print("Received CSV: $dataString");
 
-void _processIncomingBleData(List<int> value) {
-  try {
-    String dataString = String.fromCharCodes(value).trim();
-    print("Received CSV: $dataString");
+      List<String> fields = dataString.split(',');
 
-    List<String> fields = dataString.split(',');
+      if (fields.length != 13) {
+        print("Unexpected number of fields: ${fields.length}");
+        return;
+      }
 
-    if (fields.length != 13) {
-      print("Unexpected number of fields: ${fields.length}");
-      return;
+      String timestamp = DateTime.now().toString();
+      int batteryPercent = int.parse(fields[0]);
+      int imuTimestamp = int.parse(fields[1]);
+      int label = int.parse(fields[2]);
+      int stepCount = int.parse(fields[3]);
+      double distance = double.parse(fields[4]);
+      double speed = double.parse(fields[5]);
+      double accelMag = double.parse(fields[6]);
+      double accX = double.parse(fields[7]);
+      double accY = double.parse(fields[8]);
+      double accZ = double.parse(fields[9]);
+      double gyroX = double.parse(fields[10]);
+      double gyroY = double.parse(fields[11]);
+      double gyroZ = double.parse(fields[12]);
+
+      print(
+          "timestamp: $timestamp, IMU: $imuTimestamp, Steps: $stepCount, Speed: ${speed.toStringAsFixed(2)} m/s");
+      print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
+      print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
+
+      // Optional: store data if _isCollecting is true
+      if (_isCollecting) {
+        _bleDataBuffer.add({
+          'timestamp': timestamp,
+          'imuTimestamp': imuTimestamp,
+          'label': label,
+          'stepCount': stepCount,
+          'distance': distance,
+          'speed': speed,
+          'accelMag': accelMag,
+          'acc_X': accX,
+          'acc_Y': accY,
+          'acc_Z': accZ,
+          'gyro_X': gyroX,
+          'gyro_Y': gyroY,
+          'gyro_Z': gyroZ,
+          'activity': _currentActivity ?? '',
+        });
+        print(jsonEncode(_bleDataBuffer.last));
+      }
+    } catch (e) {
+      print("Data processing error: $e");
     }
-
-    int batteryPercent = int.parse(fields[0]);
-    int imuTimestamp = int.parse(fields[1]);
-    int label = int.parse(fields[2]);
-    int stepCount = int.parse(fields[3]);
-    double distance = double.parse(fields[4]);
-    double speed = double.parse(fields[5]);
-    double accelMag = double.parse(fields[6]);
-    double accX = double.parse(fields[7]);
-    double accY = double.parse(fields[8]);
-    double accZ = double.parse(fields[9]);
-    double gyroX = double.parse(fields[10]);
-    double gyroY = double.parse(fields[11]);
-    double gyroZ = double.parse(fields[12]);
-
-    print("IMU: $imuTimestamp, Steps: $stepCount, Speed: ${speed.toStringAsFixed(2)} m/s");
-    print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
-    print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
-
-    // Optional: store data if _isCollecting is true
-    if (_isCollecting) {
-      _bleDataBuffer.add({
-        'timestamp': imuTimestamp,
-        'label': label,
-        'stepCount': stepCount,
-        'distance': distance,
-        'speed': speed,
-        'accelMag': accelMag,
-        'accX': accX,
-        'accY': accY,
-        'accZ': accZ,
-        'gyroX': gyroX,
-        'gyroY': gyroY,
-        'gyroZ': gyroZ,
-        'activity': _currentActivity ?? '',
-      });
-    }
-  } catch (e) {
-    print("Data processing error: $e");
   }
-}
-
 
 //Tap on any device -> stop the ongoing scanning process and then connect to the device
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    
     try {
       FlutterBluePlus.stopScan();
 
@@ -416,27 +426,34 @@ void _processIncomingBleData(List<int> value) {
       device.connectionState.listen((BluetoothConnectionState state) async {
         if (state == BluetoothConnectionState.connected) {
           print("Device is connected!");
+          setState(() {
+            _status = "BLEconnected";
+          });
           globals.isConnectedBle = true;
           _discoverServices(device);
         } else if (state == BluetoothConnectionState.disconnected) {
-        print("Device disconnected");
-        await _cleanUpBleResources();
-      }
+          print("Device disconnected");
+          setState(() {
+            _status = "BLEdisconnected";
+          });
+          await _cleanUpBleResources();
+        }
       });
     } catch (e) {
       print("Error connecting to device: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Connection Error: ${e.toString()}')),
-    );
+        SnackBar(content: Text('Connection Error: ${e.toString()}')),
+      );
     }
   }
+
   //cleanup method
-Future<void> _cleanUpBleResources() async {
-  _bleBufferTimer?.cancel();
-  await _bleDataSubscription?.cancel();
-  _isSubscribed = false;
-  _bleDataBuffer.clear();
-}
+  Future<void> _cleanUpBleResources() async {
+    _bleBufferTimer?.cancel();
+    await _bleDataSubscription?.cancel();
+    _isSubscribed = false;
+    _bleDataBuffer.clear();
+  }
 
   Future<void> _connectToMqtt() async {
     setState(() {
