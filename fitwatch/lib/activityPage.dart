@@ -73,12 +73,26 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text(
+                "Human Activity Monitoring and Recognition",
+                style: TextStyle(
+                    fontFamily: 'Merriweather',
+                    fontSize: 35,
+                    fontWeight: FontWeight.bold),
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              // Text(
+              //   (!_isCollecting) ? 'Select an activity' : '',
+              //   style: TextStyle(fontSize: 15, color: Colors.black54),
+              // ),
               // Activity Buttons
               ..._buildActivityButtons(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 0),
               // Collection Status
               _buildCollectionStatus(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
               // Start/Stop Buttons
               _buildControlButtons(),
             ],
@@ -92,7 +106,7 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
     final activities = {
       'WALKING': [Colors.blue, const Color.fromARGB(255, 154, 192, 223)],
       'WALKING_UPSTAIRS': [
-        Colors.green,
+        const Color.fromARGB(255, 112, 198, 86),
         const Color.fromARGB(255, 174, 220, 176)
       ],
       'WALKING_DOWNSTAIRS': [
@@ -101,7 +115,10 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
       ],
       'SITTING': [Colors.amber, const Color.fromARGB(255, 229, 213, 167)],
       'STANDING': [Colors.orange, const Color.fromARGB(255, 221, 193, 151)],
-      'LAYING': [Colors.deepPurple, const Color.fromARGB(255, 204, 182, 241)],
+      'LAYING': [
+        const Color.fromARGB(255, 109, 66, 183),
+        const Color.fromARGB(255, 204, 182, 241)
+      ],
     };
 
     List<Widget> buttonRows = [];
@@ -116,24 +133,31 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: RaisedGradientButton(
+              isActive: isActive,
+              isSelected: isSelected,
               gradient: LinearGradient(
-                colors: isActive
-                    ? [
-                        const Color.fromARGB(255, 3, 3, 93),
-                        const Color.fromARGB(255, 63, 91, 202)
-                      ]
-                    : isSelected
-                        ? [
-                            const Color.fromARGB(255, 3, 3, 93),
-                            const Color.fromARGB(255, 63, 91, 202)
-                          ]
-                        : entry.value,
+                colors:
+                    // isActive
+                    //     ? [
+                    //         const Color.fromARGB(255, 3, 3, 93),
+                    //         const Color.fromARGB(255, 63, 91, 202)
+                    //       ]
+                    //     : isSelected
+                    //         ? [
+                    //             const Color.fromARGB(255, 3, 3, 93),
+                    //             const Color.fromARGB(255, 63, 91, 202)
+                    //           ]
+                    // :
+                    entry.value,
               ),
               onPressed: () => _handleActivitySelect(entry.key),
               child: Text(
                 entry.key.replaceAll('_', ' '),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 20),
+                style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -160,11 +184,18 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
               key: ValueKey(_selectedActivity),
               style: const TextStyle(
                 color: Colors.green,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             )
-          : const SizedBox.shrink(),
+          : const Text(
+              'Select an activity',
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                // fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 
@@ -175,40 +206,43 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
         children: [
           ElevatedButton.icon(
             onPressed: () {
-              if(globals.isConnected || globals.isConnectedBle){
-                 _handleStartPressed(context);
-              }
-              else{
+              if (globals.isConnected || globals.isConnectedBle) {
+                if (_isCollecting)
+                  _handleStopPressed();
+                else
+                  _handleStartPressed(context);
+              } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text("Waiting for the connection...")),
                 );
               }
-             
-            } ,
+            },
             icon: Icon(
-              Icons.play_arrow,
+              _isCollecting ? Icons.stop : Icons.play_arrow,
               color: Colors.white,
             ),
-            label: const Text("Start", style: TextStyle(color: Colors.white)),
+            label: Text(
+              _isCollecting ? "Stop" : "Start",
+              style: const TextStyle(color: Colors.white),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isCollecting
-                  ? Colors.grey
-                  : const Color.fromRGBO(96, 181, 255, 1),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              elevation: 5,
+              backgroundColor: _isCollecting ? Colors.red : Colors.green,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
             ),
           ),
-          const SizedBox(width: 10),
-          ElevatedButton.icon(
-            onPressed: _isCollecting ? _handleStopPressed : null,
-            icon: const Icon(Icons.stop, color: Colors.white),
-            label: const Text("Stop", style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: !_isCollecting
-                  ? Colors.grey
-                  : const Color.fromRGBO(96, 181, 255, 1),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-            ),
-          ),
+          // const SizedBox(width: 10),
+          // ElevatedButton.icon(
+          //   onPressed: _isCollecting ? _handleStopPressed : null,
+          //   icon: const Icon(Icons.stop, color: Colors.white),
+          //   label: const Text("Stop", style: TextStyle(color: Colors.white)),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: !_isCollecting
+          //         ? Colors.grey
+          //         : const Color.fromRGBO(96, 181, 255, 1),
+          //     padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+          //   ),
+          // ),
         ],
       ),
     );

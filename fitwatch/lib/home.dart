@@ -547,18 +547,22 @@ class _HomePage extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    print('ANALYSIS SCREEN DATA CHECK:');
-    print(
-        'Total points: ${_isCollecting ? _newDataBuffer.length + _dataHistory.length : _dataHistory.length}');
-    if (_dataHistory.isNotEmpty) {
-      print('First point acc_x: ${_dataHistory.first['acc_X']}');
-    }
+    // print('ANALYSIS SCREEN DATA CHECK:');
+    // print(
+    //     'Total points: ${_isCollecting ? _newDataBuffer.length + _dataHistory.length : _dataHistory.length}');
+    // if (_dataHistory.isNotEmpty) {
+    //   print('First point acc_x: ${_dataHistory.first['acc_X']}');
+    // }
     final ThemeData theme = Theme.of(context);
     // _scaffoldContext = context;
     return Scaffold(
       key: _scaffoldKey,
+      // extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
+        scrolledUnderElevation: 0.0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        // backgroundColor: const Color.fromRGBO(96, 181, 255, 1),
         actions: [
           PopupMenuButton<ConnectionType>(
               initialValue: selectedConnection,
@@ -599,19 +603,19 @@ class _HomePage extends State<HomePage> {
         destinations: const <Widget>[
           NavigationDestination(
             selectedIcon: Icon(
-              Icons.insights,
-              color: Colors.white,
-            ),
-            icon: Icon(Icons.insights_outlined),
-            label: 'Data',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(
               Icons.label_important,
               color: Colors.white,
             ),
             icon: Icon(Icons.label_important_outline),
             label: 'Activity',
+          ),
+          NavigationDestination(
+            selectedIcon: Icon(
+              Icons.insights,
+              color: Colors.white,
+            ),
+            icon: Icon(Icons.insights_outlined),
+            label: 'Data',
           ),
           NavigationDestination(
               selectedIcon: Icon(
@@ -640,15 +644,15 @@ class _HomePage extends State<HomePage> {
             child: IndexedStack(
               index: currentPageIndex,
               children: [
+                AnnotateActivity(
+                  onStart: _startCollection,
+                  onStop: _stopCollection,
+                ),
                 DataLogs(
                   dataHistory: _isCollecting
                       ? [..._newDataBuffer, ..._dataHistory]
                       : _dataHistory,
                   status: _status,
-                ),
-                AnnotateActivity(
-                  onStart: _startCollection,
-                  onStop: _stopCollection,
                 ),
                 AnalysisScreen(
                   dataHistory: _isCollecting
