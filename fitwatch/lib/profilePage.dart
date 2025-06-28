@@ -93,7 +93,8 @@ class _ProfileState extends State<Profile> {
                             style: TextStyle(color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromRGBO(96, 181, 255, 1),
+                            backgroundColor:
+                                const Color.fromARGB(255, 132, 169, 155),
                             padding: EdgeInsets.symmetric(
                                 horizontal: 30, vertical: 12),
                             textStyle: TextStyle(

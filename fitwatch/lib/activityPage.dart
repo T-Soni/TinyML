@@ -65,40 +65,61 @@ class _AnnotateActivityState extends State<AnnotateActivity> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                "Human Activity Monitoring and Recognition",
-                style: TextStyle(
-                    fontFamily: 'Merriweather',
-                    fontSize: 35,
-                    fontWeight: FontWeight.bold),
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              // Text(
-              //   (!_isCollecting) ? 'Select an activity' : '',
-              //   style: TextStyle(fontSize: 15, color: Colors.black54),
-              // ),
-              // Activity Buttons
-              ..._buildActivityButtons(),
-              const SizedBox(height: 0),
-              // Collection Status
-              _buildCollectionStatus(),
-              const SizedBox(height: 8),
-              // Start/Stop Buttons
-              _buildControlButtons(),
-            ],
+    return Stack(
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                // const Color.fromARGB(255, 132, 169, 155),
+                Colors.white10,
+                Color.fromRGBO(224, 224, 224, 1), // white
+              ],
+              stops: [0.09, 0.55],
+            ),
           ),
         ),
-      ),
+        Scaffold(
+          // backgroundColor: const Color.fromRGBO(224, 224, 224, 1),
+          backgroundColor: Colors.transparent,
+          body: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Human Activity Monitoring and Recognition",
+                    style: TextStyle(
+                        fontFamily: 'Merriweather',
+                        fontSize: 35,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  // Text(
+                  //   (!_isCollecting) ? 'Select an activity' : '',
+                  //   style: TextStyle(fontSize: 15, color: Colors.black54),
+                  // ),
+                  // Activity Buttons
+                  ..._buildActivityButtons(),
+                  const SizedBox(height: 0),
+                  // Collection Status
+                  _buildCollectionStatus(),
+                  const SizedBox(height: 8),
+                  // Start/Stop Buttons
+                  _buildControlButtons(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

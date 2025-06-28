@@ -92,24 +92,29 @@ class DataLogs extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromRGBO(182, 208, 231, 1),
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
+        // backgroundColor: Color.fromRGBO(182, 208, 231, 1),
         title: const Text(
           'Sensor Data',
           style: TextStyle(
-              fontSize: 25, fontWeight: FontWeight.w600, color: Colors.white),
+              fontSize: 25, fontWeight: FontWeight.w600, color: Colors.black54),
         ),
         actions: [
-          Icon(
-            status == "BLEconnected"
-                ? Icons.bluetooth_connected
-                : status == "Connected"
-                    ? Icons.wifi
-                    : Icons.wifi_off,
-            color: status == "BLEconnected"
-                ? Colors.blue
-                : status == "Connected"
-                    ? Colors.green
-                    : Colors.red,
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Icon(
+              status == "BLEconnected"
+                  ? Icons.bluetooth_connected
+                  : status == "Connected"
+                      ? Icons.wifi
+                      : Icons.wifi_off,
+              color: status == "BLEconnected"
+                  ? Colors.blue
+                  : status == "Connected"
+                      ? Colors.green
+                      : Colors.red,
+            ),
           ),
         ],
       ),

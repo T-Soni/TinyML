@@ -559,6 +559,8 @@ class _HomePage extends State<HomePage> {
       key: _scaffoldKey,
       // extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        // backgroundColor: const Color.fromARGB(255, 132, 169, 155),
         scrolledUnderElevation: 0.0,
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -598,7 +600,8 @@ class _HomePage extends State<HomePage> {
             currentPageIndex = index;
           });
         },
-        indicatorColor: Color.fromRGBO(96, 181, 255, 1),
+        // indicatorColor: Color.fromRGBO(96, 181, 255, 1),
+        indicatorColor: const Color.fromARGB(255, 132, 169, 155),
         selectedIndex: currentPageIndex,
         destinations: const <Widget>[
           NavigationDestination(
