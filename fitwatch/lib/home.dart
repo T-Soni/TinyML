@@ -5,6 +5,8 @@ import 'package:fitwatch/activityPage.dart';
 import 'package:fitwatch/analysis.dart';
 import 'package:fitwatch/dataLogs.dart';
 import 'package:fitwatch/profilePage.dart';
+import 'package:fitwatch/utilities/databaseHelper.dart';
+import 'package:fitwatch/utilities/sensorDataRepository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -32,7 +34,9 @@ class _HomePage extends State<HomePage> {
   int currentPageIndex = 0;
   late MqttServerClient _client;
   String _status = "Disconnected";
-  List<Map<String, dynamic>> _dataHistory = [];
+  // List<Map<String, dynamic>> _dataHistory = [];
+  final SensorDataRepository _sensorRepo =
+      SensorDataRepository(DatabaseHelper.instance);
   ConnectionType? selectedConnection;
 
   String? _currentActivity;
@@ -48,32 +52,34 @@ class _HomePage extends State<HomePage> {
   PersistentBottomSheetController? _bottomSheetController;
   StreamSubscription<List<int>>? _bleDataSubscription;
   bool _isSubscribed = false;
-  final _bleDataBuffer = <Map<String, dynamic>>[]; //Buffer for ble data
+  // final _bleDataBuffer = <Map<String, dynamic>>[]; //Buffer for ble data
+  final List<Map<String, dynamic>> _bleDataBuffer = [];
   Timer? _bleBufferTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedData();
+
+    // _loadSavedData();
     // _connectToMqtt();
   }
 
-  Future<void> _loadSavedData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString('sensor_data_history');
-    if (savedData != null) {
-      setState(() {
-        _dataHistory = List<Map<String, dynamic>>.from(
-            jsonDecode(savedData).map((e) => Map<String, dynamic>.from(e)));
-      });
-    }
-  }
+  // Future<void> _loadSavedData() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final savedData = prefs.getString('sensor_data_history');
+  //   if (savedData != null) {
+  //     setState(() {
+  //       _dataHistory = List<Map<String, dynamic>>.from(
+  //           jsonDecode(savedData).map((e) => Map<String, dynamic>.from(e)));
+  //     });
+  //   }
+  // }
 
-  Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
+  // Future<void> _saveData() async {
+  //   final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setString('sensor_data_history', jsonEncode(_dataHistory));
-  }
+  //   await prefs.setString('sensor_data_history', jsonEncode(_dataHistory));
+  // }
 
   Future<void> startScanning() async {
     try {
@@ -232,47 +238,6 @@ class _HomePage extends State<HomePage> {
       if (targetChar.properties.notify && !_isSubscribed) {
         await _setupBleNotifications(targetChar);
       }
-
-      //   //checks if characteristic supports read
-      //   if (targetChar.properties.read) {
-      //     //reads the data (List<int>, i.e. raw bytes)
-      //     List<int> value = await targetChar.read();
-
-      //     //converts each byte into a 2-digit hex string and joins them
-      //     String hexString = value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-      //     print('Hex data: $hexString');
-
-      //     //Converts the bytes to a UTF-8 string, assuming it is JSON
-      //     String jsonString = String.fromCharCodes(value);
-      //     print('Raw JSON string: $jsonString');
-
-      //     //try to parse the string into a JSON object
-      //     try {
-      //       dynamic jsonData = jsonDecode(jsonString);
-      //       print('Decoded JSON: $jsonData');
-      //     } catch (e) {
-      //       print('Error parsing JSON: $e');
-      //     }
-
-      //     //Check if the characteristic supports notifications
-      //     if (targetChar.properties.notify) {
-      //       // Subscribes to real-time updates when new data arrives
-      //       targetChar.onValueReceived.listen((value) {
-      //         String newData = String.fromCharCodes(value);
-      //         print('New notification data: $newData');
-
-      //         try {
-      //           dynamic jsonData = jsonDecode(newData);
-      //           print('Decoded JSON from notification : $jsonData');
-      //         }catch(e){
-      //           print('Error parsing JSON from notifications: $e');
-      //         }
-      //       });
-      //       await targetChar.setNotifyValue(true);
-      //     }
-      //   } else {
-      //     print('Characteristic is not readable');
-      //   }
     } catch (e) {
       print('Error discovering services: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -310,7 +275,7 @@ class _HomePage extends State<HomePage> {
       _bleBufferTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
         if (_bleDataBuffer.isNotEmpty && _isCollecting) {
           setState(() {
-            _newDataBuffer.insertAll(0, _bleDataBuffer);
+            // _newDataBuffer.insertAll(0, _bleDataBuffer);
             _bleDataBuffer.clear();
           });
         }
@@ -320,46 +285,7 @@ class _HomePage extends State<HomePage> {
     }
   }
 
-  // void _processIncomingBleData(List<int> value) {
-  //   try {
-  //     //converts each byte into a 2-digit hex string and joins them
-  //     String hexString =
-  //         value.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-  //     print('Hex data: $hexString');
-
-  //     //Converts the bytes to a UTF-8 string, assuming it is JSON
-  //     String jsonString = String.fromCharCodes(value);
-  //     print('Raw JSON string: $jsonString');
-
-  //     //try to parse the string into a JSON object
-  //     try {
-  //       dynamic jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-  //       // print('Decoded JSON: $jsonData');
-
-  //       // Add activity context if collecting
-  //       final Map<String, dynamic> dataWithContext = <String, dynamic>{
-  //         ...jsonData,
-  //         if(_isCollecting && _currentActivity != null)
-  //           // 'label' : _currentActivity!,
-  //           'activity' : _currentActivity!,
-
-  //       };
-
-  //       // For debugging, print every 10th packet
-  //       if (_bleDataBuffer.length % 10 == 0){
-  //         print('BLE data received: $dataWithContext');
-  //       }
-
-  //       _bleDataBuffer.add(dataWithContext);
-  //     } catch (e) {
-  //       print('Error parsing JSON: $e');
-  //     }
-  //   } catch (e) {
-  //     print('Error processing BLE data: $e');
-  //   }
-  // }
-
-  void _processIncomingBleData(List<int> value) {
+  void _processIncomingBleData(List<int> value) async {
     try {
       String dataString = String.fromCharCodes(value).trim();
       print("Received CSV: $dataString");
@@ -371,7 +297,8 @@ class _HomePage extends State<HomePage> {
         return;
       }
 
-      String timestamp = DateTime.now().toString();
+      // String timestamp = DateTime.now().toString();
+      String timestamp = DateTime.now().toIso8601String();
       int batteryPercent = int.parse(fields[0]);
       int imuTimestamp = int.parse(fields[1]);
       int label = int.parse(fields[2]);
@@ -391,25 +318,49 @@ class _HomePage extends State<HomePage> {
       print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
       print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
 
-      // Optional: store data if _isCollecting is true
+      // only store data if _isCollecting is true
+      // if (_isCollecting) {
+      //   _bleDataBuffer.add({
+      //     'timestamp': timestamp,
+      //     'imuTimestamp': imuTimestamp,
+      //     'label': label,
+      //     'stepCount': stepCount,
+      //     'distance': distance,
+      //     'speed': speed,
+      //     'accelMag': accelMag,
+      //     'acc_X': accX,
+      //     'acc_Y': accY,
+      //     'acc_Z': accZ,
+      //     'gyro_X': gyroX,
+      //     'gyro_Y': gyroY,
+      //     'gyro_Z': gyroZ,
+      //     'activity': _currentActivity ?? '',
+      //   });
       if (_isCollecting) {
-        _bleDataBuffer.add({
+        final logEntry = {
           'timestamp': timestamp,
-          'imuTimestamp': imuTimestamp,
+          'imu_timestamp': imuTimestamp,
           'label': label,
-          'stepCount': stepCount,
+          'step_count': stepCount,
           'distance': distance,
           'speed': speed,
-          'accelMag': accelMag,
-          'acc_X': accX,
-          'acc_Y': accY,
-          'acc_Z': accZ,
-          'gyro_X': gyroX,
-          'gyro_Y': gyroY,
-          'gyro_Z': gyroZ,
+          'accel_mag': accelMag,
+          'acc_x': accX,
+          'acc_y': accY,
+          'acc_z': accZ,
+          'gyro_x': gyroX,
+          'gyro_y': gyroY,
+          'gyro_z': gyroZ,
           'activity': _currentActivity ?? '',
-        });
-        print(jsonEncode(_bleDataBuffer.last));
+          'battery_percent': batteryPercent,
+        };
+        _newDataBuffer
+            .add(logEntry); // Used for in-memory analysis or duration calc
+
+        // print(jsonEncode(_bleDataBuffer.last));
+        print(jsonEncode(logEntry));
+        // Insert into SQLite
+        await _sensorRepo.insertRawData(logEntry);
       }
     } catch (e) {
       print("Data processing error: $e");
@@ -518,14 +469,58 @@ class _HomePage extends State<HomePage> {
     });
   }
 
-  void _stopCollection() {
+  void _stopCollection() async {
     setState(() {
       _isCollecting = false;
       // Merge buffer with main history
-      _dataHistory.insertAll(0, _newDataBuffer);
-      _newDataBuffer.clear();
-      _saveData();
+      // _dataHistory.insertAll(0, _newDataBuffer);
+      // _newDataBuffer.clear();
+      // _saveData();
     });
+
+    if (_newDataBuffer.isEmpty) return;
+
+    // Store all new logs to database
+    for (final log in _newDataBuffer) {
+      await _sensorRepo.insertRawData(log);
+    }
+
+    // Group the _newDataBuffer by activity
+    final Map<String, List<Map<String, dynamic>>> groupedByActivity = {};
+
+    for (final log in _newDataBuffer) {
+      final activity = log['activity'] ?? '';
+      groupedByActivity.putIfAbsent(activity, () => []).add(log);
+    }
+
+    final now = DateTime.now();
+    final today =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final weekId = _sensorRepo.getWeekId(now);
+
+    for (final entry in groupedByActivity.entries) {
+      final activity = entry.key;
+      final logs = entry.value;
+
+      if (logs.length < 2) continue; // not enough data to measure time
+
+      // Sort logs by timestamp
+      logs.sort((a, b) => DateTime.parse(a['timestamp'])
+          .compareTo(DateTime.parse(b['timestamp'])));
+
+      final start = DateTime.parse(logs.first['timestamp']);
+      final end = DateTime.parse(logs.last['timestamp']);
+      final durationSeconds = end.difference(start).inSeconds;
+
+      if (durationSeconds > 0) {
+        await _sensorRepo.updateDailySummary(today, activity, durationSeconds);
+        await _sensorRepo.updateWeeklySummary(
+            weekId, activity, durationSeconds);
+      }
+    }
+
+    await _sensorRepo.cleanupOldData();
+    _newDataBuffer.clear();
   }
 
   void _updateData(String payload) {
@@ -533,13 +528,13 @@ class _HomePage extends State<HomePage> {
 
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      if (!mounted) return;
-      setState(() {
-        _newDataBuffer.insert(0, {
-          ...data,
-          'activity': _currentActivity!,
-        });
-      });
+      // if (!mounted) return;
+      // setState(() {
+      //   _newDataBuffer.insert(0, {
+      //     ...data,
+      //     'activity': _currentActivity!,
+      //   });
+      // });
     } catch (e) {
       print("Data parse error: $e");
     }
@@ -652,15 +647,16 @@ class _HomePage extends State<HomePage> {
                   onStop: _stopCollection,
                 ),
                 DataLogs(
-                  dataHistory: _isCollecting
-                      ? [..._newDataBuffer, ..._dataHistory]
-                      : _dataHistory,
+                  // dataHistory: _isCollecting
+                  //     ? [..._newDataBuffer, ..._dataHistory]
+                  // : _dataHistory,
+                  sensorRepo: _sensorRepo,
                   status: _status,
                 ),
                 AnalysisScreen(
-                  dataHistory: _isCollecting
-                      ? [..._newDataBuffer, ..._dataHistory]
-                      : _dataHistory,
+                  // dataHistory: _isCollecting
+                  //     ? [..._newDataBuffer, ..._dataHistory]
+                  //     : _dataHistory,
                   status: _status,
                 ),
                 Profile(),

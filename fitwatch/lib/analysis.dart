@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:fitwatch/sensorChart.dart';
+import 'package:fitwatch/utilities/databaseHelper.dart';
+import 'package:fitwatch/utilities/sensorDataRepository.dart';
 import 'package:fitwatch/widgets/dropdownMenu.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -7,11 +11,10 @@ import 'dart:math';
 late int dataPointsLength1;
 
 class AnalysisScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> dataHistory;
   final String status;
 
   const AnalysisScreen({
-    required this.dataHistory,
+    // required this.dataHistory,
     required this.status,
     super.key,
   });
@@ -21,8 +24,47 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
+  List<Map<String, dynamic>> _dataHistory = [];
+  bool _isLoading = true;
+
+  late StreamSubscription _dataSubscription;
+
+  final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
   int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyrometer
   final int _displayPoints = 50;
+
+  @override
+  void initState() {
+    super.initState();
+    // _loadData();
+    _setupDataStream();
+  }
+
+  void _setupDataStream() {
+    _dataSubscription = _sensorRepo.getRealtimeDataStream().listen((data) {
+      if (mounted) {
+        setState(() {
+          _dataHistory = data;
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _dataSubscription.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final logs = await _sensorRepo.getRawData(limit: 100); //check
+    setState(() {
+      _dataHistory = logs;
+      _isLoading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<FlSpot> accX = [];
@@ -44,8 +86,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     // double gmaxY = 10, gminY = -10;
 
     int dataPointsLength =
-        (50 < widget.dataHistory.length) ? 50 : widget.dataHistory.length;
-    dataPointsLength1 = widget.dataHistory.length;
+        (50 < _dataHistory.length) ? 50 : _dataHistory.length;
+    // int dataPointsLength =
+    //     (50 < widget.dataHistory.length) ? 50 : widget.dataHistory.length;
+    dataPointsLength1 = _dataHistory.length;
+    // dataPointsLength1 = widget.dataHistory.length;
     if (dataPointsLength == 0) {
       return Material(
         child: Expanded(
@@ -68,7 +113,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     // Display latest entries in reverse
     // for (int i = 50; i >= 0; i--) {
     for (int i = dataPointsLength - 1; i >= 0; i--) {
-      final data = widget.dataHistory[i];
+      final data = _dataHistory[i];
+      // final data = widget.dataHistory[i];
       final x = _parseDouble(data['acc_X']);
       final y = _parseDouble(data['acc_Y']);
       final z = _parseDouble(data['acc_Z']);
@@ -103,189 +149,193 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     gmaxY += 5;
     gminY -= 5;
 
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                const Color.fromARGB(255, 132, 169, 155),
-                Color.fromRGBO(224, 224, 224, 1), // white
-              ],
-              stops: [0.09, 0.55],
-            ),
-          ),
-        ),
-        Scaffold(
-          // backgroundColor: const Color.fromARGB(255, 209, 225, 215),
-          backgroundColor: Colors.transparent,
-          // appBar: AppBar(title: const Text('Analysis')),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Debug info
-                  // Padding(
-                  //   padding: const EdgeInsets.all(16.0),
-                  //   child: Column(
-                  //     children: [
-                  //       Text('Total Points: ${dataHistory.length}'),
-                  //       Text('Y-Range: ${minY.toStringAsFixed(1)} to ${maxY.toStringAsFixed(1)}'),
-                  //       Text('First X value: ${accX.isNotEmpty ? accX.first.y : "N/A"}'),
-                  //     ],
-                  //   ),
-                  // ),
-
-                  const SizedBox(height: 16),
-                  ToggleButtons(
-                    isSelected: [selectedIndex == 0, selectedIndex == 1],
-                    onPressed: (int index) {
-                      setState(() {
-                        selectedIndex = index;
-                      });
-                    },
-                    borderColor: Colors.black54,
-                    selectedBorderColor: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                    selectedColor: const Color.fromARGB(255, 65, 64, 64),
-                    fillColor: Colors.white70,
-                    // fillColor: const Color.fromARGB(255, 132, 169, 155),
-                    color: Colors.white,
-                    constraints:
-                        const BoxConstraints(minWidth: 150, minHeight: 40),
-                    children: const [
-                      Text(
-                        "Accelerometer",
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      Text("Gyroscope",
-                          style: TextStyle(fontWeight: FontWeight.w500)),
+    return (_isLoading)
+        ? const Center(
+            child: CircularProgressIndicator(),
+          )
+        : Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color.fromARGB(255, 132, 169, 155),
+                      Color.fromRGBO(224, 224, 224, 1), // white
                     ],
+                    stops: [0.09, 0.55],
                   ),
-
-                  // Padding(
-                  //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  // Card(
-                  //   elevation: 4,
-                  //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  //   child: Padding(
-                  //     padding: const EdgeInsets.all(16.0),
-                  //     child: SizedBox(
-                  //       height: 300,
-                  //       child: LineChart(
-                  //         LineChartData(
-                  //           minX: 0,
-                  //           maxX: 50,
-                  //           minY: minY,
-                  //           maxY: maxY,
-                  //           titlesData: const FlTitlesData(
-                  //             leftTitles: AxisTitles(
-                  //               sideTitles: SideTitles(showTitles: false),
-                  //             ),
-                  //             bottomTitles: AxisTitles(
-                  //               sideTitles: SideTitles(showTitles: true),
-                  //             ),
-                  //           ),
-                  //           gridData: const FlGridData(show: true),
-                  //           borderData: FlBorderData(
-                  //             show: true,
-                  //             border: Border.all(color: Colors.grey),
-                  //           ),
-                  //           lineBarsData: [
-                  //             _createLineData(accX, Colors.blue),
-                  //             _createLineData(accY, Colors.orange),
-                  //             _createLineData(accZ, Colors.green),
-                  //           ],
-                  //         ),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("${dataPointsLength1}"),
-                      Container(
-                        height: 10,
-                        width: 10,
-                        decoration: BoxDecoration(
-                            color: Colors.blue,
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 1,
-                            )),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text("X"),
-                      const SizedBox(width: 8),
-                      Container(
-                        height: 10,
-                        width: 10,
-                        decoration: BoxDecoration(
-                            color: Colors.orange,
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 1,
-                            )),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text("Y"),
-                      const SizedBox(width: 8),
-                      Container(
-                        height: 10,
-                        width: 10,
-                        decoration: BoxDecoration(
-                            color: Colors.green,
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 1,
-                            )),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text("Z"),
-                    ],
-                  ),
-                  if (selectedIndex == 0)
-                    SensorChart(
-                      xData: accX,
-                      yData: accY,
-                      zData: accZ,
-                      minY: minY,
-                      maxY: maxY,
-                      showX: true,
-                      showY: true,
-                      showZ: true,
-                    )
-                  else
-                    SensorChart(
-                      xData: gyroX,
-                      yData: gyroY,
-                      zData: gyroZ,
-                      minY: gminY,
-                      maxY: gmaxY,
-                      showX: true,
-                      showY: true,
-                      showZ: true,
-                    ),
-
-                  // ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  SizedBox(height: 20),
-
-                  _buildActivityTimeAnalysisChart(
-                      _calculateActivityDurations()),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
-      ],
-    );
+              Scaffold(
+                // backgroundColor: const Color.fromARGB(255, 209, 225, 215),
+                backgroundColor: Colors.transparent,
+                // appBar: AppBar(title: const Text('Analysis')),
+                body: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        // Debug info
+                        // Padding(
+                        //   padding: const EdgeInsets.all(16.0),
+                        //   child: Column(
+                        //     children: [
+                        //       Text('Total Points: ${dataHistory.length}'),
+                        //       Text('Y-Range: ${minY.toStringAsFixed(1)} to ${maxY.toStringAsFixed(1)}'),
+                        //       Text('First X value: ${accX.isNotEmpty ? accX.first.y : "N/A"}'),
+                        //     ],
+                        //   ),
+                        // ),
+
+                        const SizedBox(height: 16),
+                        ToggleButtons(
+                          isSelected: [selectedIndex == 0, selectedIndex == 1],
+                          onPressed: (int index) {
+                            setState(() {
+                              selectedIndex = index;
+                            });
+                          },
+                          borderColor: Colors.black54,
+                          selectedBorderColor: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                          selectedColor: const Color.fromARGB(255, 65, 64, 64),
+                          fillColor: Colors.white70,
+                          // fillColor: const Color.fromARGB(255, 132, 169, 155),
+                          color: Colors.white,
+                          constraints: const BoxConstraints(
+                              minWidth: 150, minHeight: 40),
+                          children: const [
+                            Text(
+                              "Accelerometer",
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            Text("Gyroscope",
+                                style: TextStyle(fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+
+                        // Padding(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        // Card(
+                        //   elevation: 4,
+                        //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        //   child: Padding(
+                        //     padding: const EdgeInsets.all(16.0),
+                        //     child: SizedBox(
+                        //       height: 300,
+                        //       child: LineChart(
+                        //         LineChartData(
+                        //           minX: 0,
+                        //           maxX: 50,
+                        //           minY: minY,
+                        //           maxY: maxY,
+                        //           titlesData: const FlTitlesData(
+                        //             leftTitles: AxisTitles(
+                        //               sideTitles: SideTitles(showTitles: false),
+                        //             ),
+                        //             bottomTitles: AxisTitles(
+                        //               sideTitles: SideTitles(showTitles: true),
+                        //             ),
+                        //           ),
+                        //           gridData: const FlGridData(show: true),
+                        //           borderData: FlBorderData(
+                        //             show: true,
+                        //             border: Border.all(color: Colors.grey),
+                        //           ),
+                        //           lineBarsData: [
+                        //             _createLineData(accX, Colors.blue),
+                        //             _createLineData(accY, Colors.orange),
+                        //             _createLineData(accZ, Colors.green),
+                        //           ],
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   ),
+                        // ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("${dataPointsLength1}"),
+                            Container(
+                              height: 10,
+                              width: 10,
+                              decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1,
+                                  )),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text("X"),
+                            const SizedBox(width: 8),
+                            Container(
+                              height: 10,
+                              width: 10,
+                              decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1,
+                                  )),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text("Y"),
+                            const SizedBox(width: 8),
+                            Container(
+                              height: 10,
+                              width: 10,
+                              decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1,
+                                  )),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text("Z"),
+                          ],
+                        ),
+                        if (selectedIndex == 0)
+                          SensorChart(
+                            xData: accX,
+                            yData: accY,
+                            zData: accZ,
+                            minY: minY,
+                            maxY: maxY,
+                            showX: true,
+                            showY: true,
+                            showZ: true,
+                          )
+                        else
+                          SensorChart(
+                            xData: gyroX,
+                            yData: gyroY,
+                            zData: gyroZ,
+                            minY: gminY,
+                            maxY: gmaxY,
+                            showX: true,
+                            showY: true,
+                            showZ: true,
+                          ),
+
+                        // ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        SizedBox(height: 20),
+
+                        _buildActivityTimeAnalysisChart(
+                            _calculateActivityDurations()),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
   }
 
   LineChartBarData _createLineData(List<FlSpot> spots, Color color) {
@@ -318,7 +368,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     };
 
     // Filter and sort today's data
-    final todayData = widget.dataHistory.where((entry) {
+    final todayData = _dataHistory.where((entry) {
+      // final todayData = widget.dataHistory.where((entry) {
       // final timestamp = DateTime.fromMillisecondsSinceEpoch(entry['timestamp']);
       final timestamp = DateTime.parse(entry['timestamp']);
       return timestamp.isAfter(todayStart);
