@@ -37,7 +37,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   void initState() {
     super.initState();
     // _loadData();
-    _setupDataStream();
+    // _setupDataStream();
   }
 
   void _setupDataStream() {

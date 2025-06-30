@@ -9,7 +9,8 @@ class SensorDataRepository {
 
   SensorDataRepository(this.dbHelper);
 
-  Stream<List<Map<String, dynamic>>> getRealtimeDataStream({int limit = 100}) {
+  Stream<List<Map<String, dynamic>>> getRealtimeDataStream(
+      {int limit = 10000}) {
     // Initial data load
     getRawData(limit: limit).then(_dataController.add);
 
