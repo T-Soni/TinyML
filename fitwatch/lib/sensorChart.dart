@@ -34,7 +34,8 @@ class SensorChart extends StatelessWidget {
           child: LineChart(
             LineChartData(
               minX: 0,
-              maxX: 50,
+              maxX: 49,
+              // maxX: 50,
               minY: minY,
               maxY: maxY,
               titlesData: const FlTitlesData(

@@ -12,6 +12,8 @@ class SensorDataRepository {
   Stream<List<Map<String, dynamic>>> getRealtimeDataStream(
       {int limit = 10000}) {
     // Initial data load
+    // This will fetch the latest data and emit it to the stream
+    print("Fetching initial data for stream...");
     getRawData(limit: limit).then(_dataController.add);
 
     // Return the stream for UI
@@ -27,7 +29,7 @@ class SensorDataRepository {
     // Notify listeners of new data
     // getRawData(limit: 100).then(_dataController.add);
 
-    getRawData(limit: 100).then((data) {
+    getRawData(limit: 500).then((data) {
       print("Emitting data stream of size: ${data.length}");
       _dataController.add(data);
     });

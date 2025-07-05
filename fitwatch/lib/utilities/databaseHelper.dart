@@ -6,7 +6,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
-  //private constructor
+  //private constructor to get a singleton instance of the DatabaseHelper
   DatabaseHelper._init();
 
   Future<Database> get database async {

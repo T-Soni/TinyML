@@ -24,29 +24,50 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
-  List<Map<String, dynamic>> _dataHistory = [];
+  List<Map<String, dynamic>> _liveWindow = [];
   bool _isLoading = true;
 
   late StreamSubscription _dataSubscription;
 
   final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
-  int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyrometer
+  int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyroscope
   final int _displayPoints = 50;
 
   @override
   void initState() {
     super.initState();
-    // _loadData();
-    // _setupDataStream();
+    _setupLiveWindow();
   }
 
-  void _setupDataStream() {
+// insert last 50 points if no live data
+  Future<void> _loadLastStoredData() async {
+    final lastData = await _sensorRepo.getRawData(limit: _displayPoints);
+    if (mounted) {
+      setState(() {
+        _liveWindow = lastData.reversed.toList(); //oldest to newest
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _setupLiveWindow() {
     _dataSubscription = _sensorRepo.getRealtimeDataStream().listen((data) {
-      if (mounted) {
+      if (mounted && data.isNotEmpty) {
         setState(() {
-          _dataHistory = data;
+          // Push the latest reading to the window
+          _liveWindow.add(data.first);
+          // Keep only the last 50 readings
+          if (_liveWindow.length > _displayPoints) {
+            _liveWindow.removeAt(0);
+          }
           _isLoading = false;
         });
+      }
+    });
+    // if no live data after a short delay, load last stored data
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_liveWindow.isEmpty && mounted) {
+        _loadLastStoredData();
       }
     });
   }
@@ -57,14 +78,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    final logs = await _sensorRepo.getRawData(limit: 100); //check
-    setState(() {
-      _dataHistory = logs;
-      _isLoading = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<FlSpot> accX = [];
@@ -73,7 +86,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final List<FlSpot> gyroX = [];
     final List<FlSpot> gyroY = [];
     final List<FlSpot> gyroZ = [];
-    // if (widget.dataHistory.isNotEmpty && widget.dataHistory.length >= _displayPoints) {
     double maxY = -double.infinity;
     double minY = double.infinity;
     double gmaxY = -double.infinity;
@@ -82,55 +94,61 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     late double currMaxG;
     late double currMinA;
     late double currMinG;
-    // double maxY = 10, minY = -10; // Default ranges
-    // double gmaxY = 10, gminY = -10;
 
-    int dataPointsLength =
-        (50 < _dataHistory.length) ? 50 : _dataHistory.length;
-    // int dataPointsLength =
-    //     (50 < widget.dataHistory.length) ? 50 : widget.dataHistory.length;
-    dataPointsLength1 = _dataHistory.length;
-    // dataPointsLength1 = widget.dataHistory.length;
+    int dataPointsLength = _liveWindow.length;
+    // Debug: Show live window length and sample data
+    print(
+        'AnalysisScreen: _liveWindow.length = ' + dataPointsLength.toString());
+    if (dataPointsLength > 0) {
+      print('First data: ' + _liveWindow.first.toString());
+      print('Last data: ' + _liveWindow.last.toString());
+    }
     if (dataPointsLength == 0) {
       return Material(
-        child: Expanded(
-            child: SizedBox(
-          width: MediaQuery.of(context).size.width,
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                'Empty Data Set',
+                'No live sensor data received.',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
               ),
-              Text('Start an activity now!')
+              Text('Start an activity or check BLE connection.'),
             ],
           ),
-        )),
+        ),
       );
     }
-    // Display latest entries in reverse
-    // for (int i = 50; i >= 0; i--) {
-    for (int i = dataPointsLength - 1; i >= 0; i--) {
-      final data = _dataHistory[i];
-      // final data = widget.dataHistory[i];
-      final x = _parseDouble(data['acc_X']);
-      final y = _parseDouble(data['acc_Y']);
-      final z = _parseDouble(data['acc_Z']);
-      final gx = _parseDouble(data['gyro_X']);
-      final gy = _parseDouble(data['gyro_Y']);
-      final gz = _parseDouble(data['gyro_Z']);
-
-      accX.add(FlSpot(50 - i.toDouble(), x));
-      accY.add(FlSpot(50 - i.toDouble(), y));
-      accZ.add(FlSpot(50 - i.toDouble(), z));
-
-      gyroX.add(FlSpot(50 - i.toDouble(), gx));
-      gyroY.add(FlSpot(50 - i.toDouble(), gy));
-      gyroZ.add(FlSpot(50 - i.toDouble(), gz));
-
-      currMaxA = max(x, max(y, x));
+    //check
+    final int startIdx = dataPointsLength > _displayPoints
+        ? dataPointsLength - _displayPoints
+        : 0;
+    //*check
+    for (int i = 0; i < dataPointsLength; i++) {
+      final data = _liveWindow[i];
+      //check
+      final spotIdx = i - startIdx;
+      //*check
+      final x = _parseDouble(data['acc_x']);
+      final y = _parseDouble(data['acc_y']);
+      final z = _parseDouble(data['acc_z']);
+      final gx = _parseDouble(data['gyro_x']);
+      final gy = _parseDouble(data['gyro_y']);
+      final gz = _parseDouble(data['gyro_z']);
+      accX.add(FlSpot(spotIdx.toDouble(), x));
+      accY.add(FlSpot(spotIdx.toDouble(), y));
+      accZ.add(FlSpot(spotIdx.toDouble(), z));
+      gyroX.add(FlSpot(spotIdx.toDouble(), gx));
+      gyroY.add(FlSpot(spotIdx.toDouble(), gy));
+      gyroZ.add(FlSpot(spotIdx.toDouble(), gz));
+      // accX.add(FlSpot(i.toDouble(), x));
+      // accY.add(FlSpot(i.toDouble(), y));
+      // accZ.add(FlSpot(i.toDouble(), z));
+      // gyroX.add(FlSpot(i.toDouble(), gx));
+      // gyroY.add(FlSpot(i.toDouble(), gy));
+      // gyroZ.add(FlSpot(i.toDouble(), gz));
+      currMaxA = max(x, max(y, z));
       currMinA = min(x, min(y, z));
       currMaxG = max(gx, max(gy, gz));
       currMinG = min(gx, min(gy, gz));
@@ -138,16 +156,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       minY = currMinA < minY ? currMinA - (currMaxA - currMinA) / 20 : minY;
       gmaxY = currMaxG > gmaxY ? currMaxG + (currMaxG - currMinG) / 20 : gmaxY;
       gminY = currMinG < gminY ? currMinG - (currMaxG - currMinG) / 20 : gminY;
-      // maxY = x > maxY ? x : maxY;
-      // minY = x < minY ? x : minY;
-      // gmaxY = gx > gmaxY ? gx : gmaxY;
-      // gminY = gx < gminY ? gx : gminY;
     }
-
     maxY += 5;
     minY -= 5;
     gmaxY += 5;
     gminY -= 5;
+
+    // If graph data is empty, show a message instead of SensorChart
+    bool hasAccData = accX.isNotEmpty && accY.isNotEmpty && accZ.isNotEmpty;
+    bool hasGyroData = gyroX.isNotEmpty && gyroY.isNotEmpty && gyroZ.isNotEmpty;
 
     return (_isLoading)
         ? const Center(
@@ -161,34 +178,20 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color.fromARGB(255, 132, 169, 155),
-                      Color.fromRGBO(224, 224, 224, 1), // white
+                      Color.fromARGB(255, 132, 169, 155),
+                      Color.fromRGBO(224, 224, 224, 1),
                     ],
                     stops: [0.09, 0.55],
                   ),
                 ),
               ),
               Scaffold(
-                // backgroundColor: const Color.fromARGB(255, 209, 225, 215),
                 backgroundColor: Colors.transparent,
-                // appBar: AppBar(title: const Text('Analysis')),
                 body: SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // Debug info
-                        // Padding(
-                        //   padding: const EdgeInsets.all(16.0),
-                        //   child: Column(
-                        //     children: [
-                        //       Text('Total Points: ${dataHistory.length}'),
-                        //       Text('Y-Range: ${minY.toStringAsFixed(1)} to ${maxY.toStringAsFixed(1)}'),
-                        //       Text('First X value: ${accX.isNotEmpty ? accX.first.y : "N/A"}'),
-                        //     ],
-                        //   ),
-                        // ),
-
                         const SizedBox(height: 16),
                         ToggleButtons(
                           isSelected: [selectedIndex == 0, selectedIndex == 1],
@@ -200,9 +203,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           borderColor: Colors.black54,
                           selectedBorderColor: Colors.black54,
                           borderRadius: BorderRadius.circular(12),
-                          selectedColor: const Color.fromARGB(255, 65, 64, 64),
+                          selectedColor: Color.fromARGB(255, 65, 64, 64),
                           fillColor: Colors.white70,
-                          // fillColor: const Color.fromARGB(255, 132, 169, 155),
                           color: Colors.white,
                           constraints: const BoxConstraints(
                               minWidth: 150, minHeight: 40),
@@ -215,49 +217,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                 style: TextStyle(fontWeight: FontWeight.w500)),
                           ],
                         ),
-
-                        // Padding(
-                        //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        // Card(
-                        //   elevation: 4,
-                        //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        //   child: Padding(
-                        //     padding: const EdgeInsets.all(16.0),
-                        //     child: SizedBox(
-                        //       height: 300,
-                        //       child: LineChart(
-                        //         LineChartData(
-                        //           minX: 0,
-                        //           maxX: 50,
-                        //           minY: minY,
-                        //           maxY: maxY,
-                        //           titlesData: const FlTitlesData(
-                        //             leftTitles: AxisTitles(
-                        //               sideTitles: SideTitles(showTitles: false),
-                        //             ),
-                        //             bottomTitles: AxisTitles(
-                        //               sideTitles: SideTitles(showTitles: true),
-                        //             ),
-                        //           ),
-                        //           gridData: const FlGridData(show: true),
-                        //           borderData: FlBorderData(
-                        //             show: true,
-                        //             border: Border.all(color: Colors.grey),
-                        //           ),
-                        //           lineBarsData: [
-                        //             _createLineData(accX, Colors.blue),
-                        //             _createLineData(accY, Colors.orange),
-                        //             _createLineData(accZ, Colors.green),
-                        //           ],
-                        //         ),
-                        //       ),
-                        //     ),
-                        //   ),
-                        // ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("${dataPointsLength1}"),
+                            Text("${dataPointsLength}"),
                             Container(
                               height: 10,
                               width: 10,
@@ -299,34 +262,44 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           ],
                         ),
                         if (selectedIndex == 0)
-                          SensorChart(
-                            xData: accX,
-                            yData: accY,
-                            zData: accZ,
-                            minY: minY,
-                            maxY: maxY,
-                            showX: true,
-                            showY: true,
-                            showZ: true,
-                          )
+                          hasAccData
+                              ? SensorChart(
+                                  xData: accX,
+                                  yData: accY,
+                                  zData: accZ,
+                                  minY: minY,
+                                  maxY: maxY,
+                                  showX: true,
+                                  showY: true,
+                                  showZ: true,
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Text(
+                                    'No accelerometer data to plot.',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                )
                         else
-                          SensorChart(
-                            xData: gyroX,
-                            yData: gyroY,
-                            zData: gyroZ,
-                            minY: gminY,
-                            maxY: gmaxY,
-                            showX: true,
-                            showY: true,
-                            showZ: true,
-                          ),
-
-                        // ),
-                        SizedBox(
-                          height: 10,
-                        ),
+                          hasGyroData
+                              ? SensorChart(
+                                  xData: gyroX,
+                                  yData: gyroY,
+                                  zData: gyroZ,
+                                  minY: gminY,
+                                  maxY: gmaxY,
+                                  showX: true,
+                                  showY: true,
+                                  showZ: true,
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Text(
+                                    'No gyroscope data to plot.',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
                         SizedBox(height: 20),
-
                         _buildActivityTimeAnalysisChart(
                             _calculateActivityDurations()),
                       ],
@@ -368,7 +341,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     };
 
     // Filter and sort today's data
-    final todayData = _dataHistory.where((entry) {
+    final todayData = _liveWindow.where((entry) {
       // final todayData = widget.dataHistory.where((entry) {
       // final timestamp = DateTime.fromMillisecondsSinceEpoch(entry['timestamp']);
       final timestamp = DateTime.parse(entry['timestamp']);

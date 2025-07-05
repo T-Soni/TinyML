@@ -1,9 +1,9 @@
 import 'dart:async';
-
 import 'package:fitwatch/utilities/databaseHelper.dart';
 import 'package:fitwatch/utilities/sensorDataRepository.dart';
 import 'package:flutter/material.dart';
 import 'package:fitwatch/session_data.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 class DataLogs extends StatefulWidget {
   final String status;
@@ -15,33 +15,25 @@ class DataLogs extends StatefulWidget {
 }
 
 class _DataLogsState extends State<DataLogs> {
-  final int pageSize = 100;
-  final ScrollController _scrollController = ScrollController();
+  static const int pageSize = 100;
+  final PagingController<int, Map<String, dynamic>> _pagingController =
+      PagingController(firstPageKey: 0);
 
-  List<Map<String, dynamic>> historyData = [];
-  Set<int> liveIds = {};
-
-  bool _isLoading = true;
-  bool _isFetchingMore = false;
-  bool _hasMoreData = true;
-  int _lastId = -1;
-
-  late StreamSubscription<List<Map<String, dynamic>>> _dataSubscription;
-
-  // Replace local liveData and liveIds with:
   final session = SessionData();
+  late StreamSubscription<List<Map<String, dynamic>>> _dataSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
-    _scrollController.addListener(_onScroll);
+    _pagingController.addPageRequestListener((pageKey) {
+      _fetchPage(pageKey);
+    });
     _setupDataStream();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _pagingController.dispose();
     _dataSubscription.cancel();
     super.dispose();
   }
@@ -50,9 +42,9 @@ class _DataLogsState extends State<DataLogs> {
     _dataSubscription =
         widget.sensorRepo.getRealtimeDataStream().listen((data) {
       if (!mounted || data.isEmpty) return;
-      int? latestHistoryId =
-          historyData.isNotEmpty ? historyData.first['id'] as int : null;
-      // Only add to liveData if there is new data newer than historyData
+      int? latestHistoryId = _pagingController.itemList?.isNotEmpty == true
+          ? _pagingController.itemList!.first['id'] as int
+          : null;
       if (latestHistoryId != null) {
         final newLive =
             data.where((entry) => entry['id'] > latestHistoryId).toList();
@@ -61,7 +53,6 @@ class _DataLogsState extends State<DataLogs> {
           session.liveIds = session.liveData.map((e) => e['id'] as int).toSet();
         });
       } else {
-        // If no history yet, don't show any liveData until new data arrives
         setState(() {
           session.liveData = [];
           session.liveIds = {};
@@ -70,45 +61,23 @@ class _DataLogsState extends State<DataLogs> {
     });
   }
 
-  Future<void> _loadData() async {
-    final latestLiveId =
-        session.liveData.isNotEmpty ? session.liveData.last['id'] : null;
-    final logs = await widget.sensorRepo.getRawData(
-      limit: pageSize,
-      beforeId: latestLiveId,
-    );
-    // Filter out duplicates
-    final filteredLogs =
-        logs.where((row) => !liveIds.contains(row['id'])).toList();
-
-    setState(() {
-      historyData = filteredLogs;
-      _lastId = filteredLogs.isNotEmpty ? filteredLogs.last['id'] : -1;
-      _isLoading = false;
-      _hasMoreData = logs.length == pageSize;
-    });
-  }
-
-  Future<void> _fetchMoreData() async {
-    if (_isFetchingMore || !_hasMoreData || _lastId == -1) return;
-
-    setState(() => _isFetchingMore = true);
-
-    final logs = await widget.sensorRepo.getRawData(
-      limit: pageSize,
-      beforeId: _lastId,
-    );
-    // Filter out duplicates
-    final filteredLogs =
-        logs.where((row) => !liveIds.contains(row['id'])).toList();
-
-    if (mounted) {
-      setState(() {
-        historyData.addAll(filteredLogs);
-        _lastId = filteredLogs.isNotEmpty ? filteredLogs.last['id'] : _lastId;
-        _hasMoreData = logs.length == pageSize;
-        _isFetchingMore = false;
-      });
+  Future<void> _fetchPage(int pageKey) async {
+    try {
+      final logs = await widget.sensorRepo.getRawData(
+        limit: pageSize,
+        beforeId: pageKey == 0 ? null : pageKey,
+      );
+      final filteredLogs =
+          logs.where((row) => !session.liveIds.contains(row['id'])).toList();
+      final isLastPage = filteredLogs.length < pageSize;
+      if (isLastPage) {
+        _pagingController.appendLastPage(filteredLogs);
+      } else {
+        final nextPageKey = filteredLogs.last['id'];
+        _pagingController.appendPage(filteredLogs, nextPageKey);
+      }
+    } catch (error) {
+      _pagingController.error = error;
     }
   }
 
@@ -188,97 +157,90 @@ class _DataLogsState extends State<DataLogs> {
 
   @override
   Widget build(BuildContext context) {
-    // Only combine liveData and historyData if liveData is not empty
-    final combinedData = session.liveData.isNotEmpty
-        ? [...session.liveData, ...historyData]
-        : historyData;
-
     return Scaffold(
-      appBar: AppBar(
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'Sensor Data',
-          style: TextStyle(
-              fontSize: 25, fontWeight: FontWeight.w600, color: Colors.black54),
-        ),
-        actions: [
+      // appBar: AppBar(
+      //   surfaceTintColor: Colors.transparent,
+      //   backgroundColor: Colors.transparent,
+      //   title: const Text(
+      //     'Sensor Data',
+      //     style: TextStyle(
+      //         fontSize: 25, fontWeight: FontWeight.w600, color: Colors.black54),
+      //   ),
+      //   actions: [
+      //     Padding(
+      //       padding: const EdgeInsets.all(12.0),
+      //       child: Icon(
+      //         widget.status == "BLEconnected"
+      //             ? Icons.bluetooth_connected
+      //             : widget.status == "Connected"
+      //                 ? Icons.wifi
+      //                 : Icons.wifi_off,
+      //         color: widget.status == "BLEconnected"
+      //             ? Colors.blue
+      //             : widget.status == "Connected"
+      //                 ? Colors.green
+      //                 : Colors.red,
+      //       ),
+      //     ),
+      //   ],
+      // ),
+      body: Column(
+        children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Icon(
-              widget.status == "BLEconnected"
-                  ? Icons.bluetooth_connected
-                  : widget.status == "Connected"
-                      ? Icons.wifi
-                      : Icons.wifi_off,
-              color: widget.status == "BLEconnected"
-                  ? Colors.blue
-                  : widget.status == "Connected"
-                      ? Colors.green
-                      : Colors.red,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                const Text("CURRENT READING",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                session.liveData.isNotEmpty
+                    ? _buildDataRow(session.liveData.first)
+                    : _buildDataRow({
+                        'timestamp': '--:--:--',
+                        'acc_x': 0.0,
+                        'acc_y': 0.0,
+                        'acc_z': 0.0,
+                        'gyro_x': 0.0,
+                        'gyro_y': 0.0,
+                        'gyro_z': 0.0,
+                        'activity': 'waiting'
+                      }),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text("LIVE DATA",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          if (session.liveData.isNotEmpty)
+            Flexible(
+              flex: 2,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: session.liveData.length,
+                itemBuilder: (context, index) =>
+                    _buildDataRow(session.liveData[index]),
+              ),
+            ),
+          const Divider(height: 1),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child:
+                Text("HISTORY", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Flexible(
+            flex: 3,
+            child: PagedListView<int, Map<String, dynamic>>(
+              pagingController: _pagingController,
+              builderDelegate: PagedChildBuilderDelegate<Map<String, dynamic>>(
+                itemBuilder: (context, item, index) => _buildDataRow(item),
+              ),
             ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Text("CURRENT READING",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      session.liveData.isNotEmpty
-                          ? _buildDataRow(session.liveData.first)
-                          : _buildDataRow({
-                              'timestamp': '--:--:--',
-                              'acc_x': 0.0,
-                              'acc_y': 0.0,
-                              'acc_z': 0.0,
-                              'gyro_x': 0.0,
-                              'gyro_y': 0.0,
-                              'gyro_z': 0.0,
-                              'activity': 'waiting'
-                            }),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text("HISTORY",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: combinedData.length + (_hasMoreData ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index >= combinedData.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        );
-                      }
-                      return _buildDataRow(combinedData[index]);
-                    },
-                  ),
-                ),
-              ],
-            ),
     );
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isFetchingMore) {
-      _fetchMoreData();
-    }
   }
 }
