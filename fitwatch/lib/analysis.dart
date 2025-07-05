@@ -29,7 +29,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   late StreamSubscription _dataSubscription;
 
-  final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
+  final _sensorRepo = SensorDataRepository();
+  // final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
   int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyroscope
   final int _displayPoints = 50;
 
@@ -54,12 +55,22 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     _dataSubscription = _sensorRepo.getRealtimeDataStream().listen((data) {
       if (mounted && data.isNotEmpty) {
         setState(() {
-          // Push the latest reading to the window
-          _liveWindow.add(data.first);
-          // Keep only the last 50 readings
-          if (_liveWindow.length > _displayPoints) {
-            _liveWindow.removeAt(0);
-          }
+          // // Push the latest reading to the window
+          // _liveWindow.add(data.first);
+          // // Keep only the last 50 readings
+          // if (_liveWindow.length > _displayPoints) {
+          //   _liveWindow.removeAt(0);
+          // }
+          // Always keep the latest 50 points, oldest to newest
+          // _liveWindow = data.reversed
+          //     .take(_displayPoints)
+          //     .toList()
+          //     .reversed
+          //     .toList()
+          //     .reversed
+          //     .toList();
+          _liveWindow = data.take(_displayPoints).toList().reversed.toList();
+          print('new data received' + _liveWindow.last.toString());
           _isLoading = false;
         });
       }
@@ -97,12 +108,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
     int dataPointsLength = _liveWindow.length;
     // Debug: Show live window length and sample data
-    print(
-        'AnalysisScreen: _liveWindow.length = ' + dataPointsLength.toString());
-    if (dataPointsLength > 0) {
-      print('First data: ' + _liveWindow.first.toString());
-      print('Last data: ' + _liveWindow.last.toString());
-    }
+    // print(
+    //     'AnalysisScreen: _liveWindow.length = ' + dataPointsLength.toString());
+    // if (dataPointsLength > 0) {
+    //   print('First data: ' + _liveWindow.first.toString());
+    //   print('Last data: ' + _liveWindow.last.toString());
+    // }
     if (dataPointsLength == 0) {
       return Material(
         child: Center(

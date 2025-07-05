@@ -35,8 +35,9 @@ class _HomePage extends State<HomePage> {
   late MqttServerClient _client;
   String _status = "Disconnected";
   // List<Map<String, dynamic>> _dataHistory = [];
-  final SensorDataRepository _sensorRepo =
-      SensorDataRepository(DatabaseHelper.instance);
+  final _sensorRepo = SensorDataRepository();
+  // final SensorDataRepository _sensorRepo =
+  //     SensorDataRepository(DatabaseHelper.instance);
   ConnectionType? selectedConnection;
 
   String? _currentActivity;
@@ -288,7 +289,7 @@ class _HomePage extends State<HomePage> {
   void _processIncomingBleData(List<int> value) async {
     try {
       String dataString = String.fromCharCodes(value).trim();
-      print("Received CSV: $dataString");
+      // print("Received CSV: $dataString");
 
       List<String> fields = dataString.split(',');
 
@@ -313,10 +314,10 @@ class _HomePage extends State<HomePage> {
       double gyroY = double.parse(fields[11]);
       double gyroZ = double.parse(fields[12]);
 
-      print(
-          "timestamp: $timestamp, IMU: $imuTimestamp, Steps: $stepCount, Speed: ${speed.toStringAsFixed(2)} m/s");
-      print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
-      print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
+      // print(
+      //     "timestamp: $timestamp, IMU: $imuTimestamp, Steps: $stepCount, Speed: ${speed.toStringAsFixed(2)} m/s");
+      // print("Accel Mag: $accelMag | X: $accX, Y: $accY, Z: $accZ");
+      // print("Gyro: X: $gyroX, Y: $gyroY, Z: $gyroZ");
 
       // only store data if _isCollecting is true
       // if (_isCollecting) {
@@ -358,12 +359,13 @@ class _HomePage extends State<HomePage> {
             .add(logEntry); // Used for in-memory analysis or duration calc
 
         // print(jsonEncode(_bleDataBuffer.last));
-        print(jsonEncode(logEntry));
+
+        // print(jsonEncode(logEntry));
         // Insert into SQLite
         await _sensorRepo.insertRawData(logEntry);
       }
     } catch (e) {
-      print("Data processing error: $e");
+      // print("Data processing error: $e");
     }
   }
 
@@ -376,14 +378,14 @@ class _HomePage extends State<HomePage> {
       await device.requestMtu(256);
       device.connectionState.listen((BluetoothConnectionState state) async {
         if (state == BluetoothConnectionState.connected) {
-          print("Device is connected!");
+          // print("Device is connected!");
           setState(() {
             _status = "BLEconnected";
           });
           globals.isConnectedBle = true;
           _discoverServices(device);
         } else if (state == BluetoothConnectionState.disconnected) {
-          print("Device disconnected");
+          // print("Device disconnected");
           setState(() {
             _status = "BLEdisconnected";
           });
@@ -391,7 +393,7 @@ class _HomePage extends State<HomePage> {
         }
       });
     } catch (e) {
-      print("Error connecting to device: $e");
+      // print("Error connecting to device: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Connection Error: ${e.toString()}')),
       );
@@ -536,7 +538,7 @@ class _HomePage extends State<HomePage> {
       //   });
       // });
     } catch (e) {
-      print("Data parse error: $e");
+      // print("Data parse error: $e");
     }
   }
 

@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:fitwatch/utilities/databaseHelper.dart';
 
 class SensorDataRepository {
+  static final SensorDataRepository _instance =
+      SensorDataRepository._internal(DatabaseHelper.instance);
+  factory SensorDataRepository() => _instance;
+  SensorDataRepository._internal(this.dbHelper);
+
   final DatabaseHelper dbHelper;
   final StreamController<List<Map<String, dynamic>>> _dataController =
       StreamController.broadcast();
 
-  SensorDataRepository(this.dbHelper);
+  // SensorDataRepository(this.dbHelper);
 
   Stream<List<Map<String, dynamic>>> getRealtimeDataStream(
       {int limit = 10000}) {
