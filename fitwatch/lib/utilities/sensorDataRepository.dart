@@ -159,4 +159,76 @@ class SensorDataRepository {
         ((date.difference(DateTime(year, 1, 1)).inDays) / 7).floor() + 1;
     return '$year-W${weekNumber.toString().padLeft(2, '0')}';
   }
+
+  Future<Map<String, Duration>> getTodayActivityDuration() async {
+    final db = await dbHelper.database;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    // Query all logs for today ordered by timestamp
+    final todayData = await db.query(
+      'raw_logs',
+      where: 'timestamp >= ?',
+      whereArgs: [todayStart.toIso8601String()],
+      orderBy: 'timestamp ASC',
+    );
+
+    // Prepare durations map
+    final durations = <String, Duration>{
+      "walking": Duration.zero,
+      "walking_upstairs": Duration.zero,
+      "walking_downstairs": Duration.zero,
+      "sitting": Duration.zero,
+      "standing": Duration.zero,
+      "laying": Duration.zero,
+    };
+
+    // Parameters
+    const gapThreshold = Duration(seconds: 2); // treat >2s as a break
+
+    String? currentActivity;
+    DateTime? segmentStartTime;
+    DateTime? lastTimestamp;
+
+    for (final entry in todayData) {
+      final entryActivity = entry['activity']?.toString().toLowerCase();
+      if (!durations.containsKey(entryActivity)) continue;
+
+      final entryTime = DateTime.parse(entry['timestamp'].toString());
+
+      if (currentActivity == null) {
+        // Start first segment
+        currentActivity = entryActivity;
+        segmentStartTime = entryTime;
+      } else if (entryActivity != currentActivity ||
+          (lastTimestamp != null &&
+              entryTime.difference(lastTimestamp) > gapThreshold)) {
+        // Activity changed or gap detected, close previous segment
+        if (segmentStartTime != null && lastTimestamp != null) {
+          final duration = lastTimestamp.difference(segmentStartTime);
+          if (duration.inSeconds > 0) {
+            durations[currentActivity] = durations[currentActivity]! + duration;
+          }
+        }
+        // Start new segment
+        currentActivity = entryActivity;
+        segmentStartTime = entryTime;
+      }
+      lastTimestamp = entryTime;
+    }
+    // Add last segment if any
+    if (currentActivity != null &&
+        segmentStartTime != null &&
+        lastTimestamp != null) {
+      final duration = lastTimestamp.difference(segmentStartTime);
+      if (duration.inSeconds > 0) {
+        durations[currentActivity] = durations[currentActivity]! + duration;
+      }
+    }
+    //print all the durations
+    durations.forEach((activity, duration) {
+      print('$activity: ${duration.inSeconds} seconds');
+    });
+    return durations;
+  }
 }

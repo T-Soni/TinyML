@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fitwatch/utilities/axis_tick_helper.dart';
 import 'package:fitwatch/sensorChart.dart';
 import 'package:fitwatch/utilities/databaseHelper.dart';
 import 'package:fitwatch/utilities/sensorDataRepository.dart';
@@ -26,18 +27,30 @@ class AnalysisScreen extends StatefulWidget {
 class _AnalysisScreenState extends State<AnalysisScreen> {
   List<Map<String, dynamic>> _liveWindow = [];
   bool _isLoading = true;
+  late Timer _timer;
 
   late StreamSubscription _dataSubscription;
+  late Future<Map<String, Duration>> todayDurationsFuture;
 
   final _sensorRepo = SensorDataRepository();
   // final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
   int selectedIndex = 0; // 0 = Accelerometer, 1 = Gyroscope
   final int _displayPoints = 50;
 
+  String selectedAnalysis = 'Today';
+
+  void _onDropdownChanged(String newValue) {
+    setState(() {
+      selectedAnalysis = newValue;
+      //filter data based on selectedAnalysis
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _setupLiveWindow();
+    todayDurationsFuture = _sensorRepo.getTodayActivityDuration();
   }
 
 // insert last 50 points if no live data
@@ -189,7 +202,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color.fromARGB(255, 132, 169, 155),
+                      // Color.fromARGB(255, 132, 169, 155),
+                      Colors.white10,
                       Color.fromRGBO(224, 224, 224, 1),
                     ],
                     stops: [0.09, 0.55],
@@ -214,9 +228,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           borderColor: Colors.black54,
                           selectedBorderColor: Colors.black54,
                           borderRadius: BorderRadius.circular(12),
-                          selectedColor: Color.fromARGB(255, 65, 64, 64),
-                          fillColor: Colors.white70,
-                          color: Colors.white,
+                          selectedColor: Colors.white,
+                          fillColor: Color.fromARGB(255, 132, 169, 155),
+                          // fillColor: Colors.white70,
+                          color: Color.fromARGB(255, 65, 64, 64),
                           constraints: const BoxConstraints(
                               minWidth: 150, minHeight: 40),
                           children: const [
@@ -231,7 +246,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("${dataPointsLength}"),
+                            // Text("${dataPointsLength}"),
                             Container(
                               height: 10,
                               width: 10,
@@ -311,6 +326,30 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   ),
                                 ),
                         SizedBox(height: 20),
+                        FutureBuilder<Map<String, Duration>>(
+                          future: todayDurationsFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            } else if (snapshot.hasError) {
+                              return Text(
+                                  'Error loading activity data: ${snapshot.error}');
+                            } else if (!snapshot.hasData ||
+                                snapshot.data!.isEmpty) {
+                              return const Text(
+                                  'No activity data available for today.');
+                            }
+
+                            final activityDurations =
+                                snapshot.data!; // Map<String, Duration>
+
+                            return _buildActivityTimeAnalysisChart(
+                                activityDurations);
+                          },
+                        ),
                         _buildActivityTimeAnalysisChart(
                             _calculateActivityDurations()),
                       ],
@@ -411,8 +450,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
   }
 
+  double getCleanMaxY(double maxVal) {
+    if (maxVal <= 30) return ((maxVal / 5).ceil() * 5).toDouble();
+    if (maxVal <= 60) return ((maxVal / 10).ceil() * 10).toDouble();
+    return ((maxVal / 60).ceil() * 60).toDouble();
+  }
+
   Widget _buildActivityTimeAnalysisChart(
       Map<String, Duration> activityDurations) {
+    final axisInfo = computeAxisTicks(activityDurations.values);
     const allActivities = [
       "walking",
       "walking_upstairs",
@@ -421,9 +467,38 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       "standing",
       "laying"
     ];
+    final double intervalValue = axisInfo.unit == "s"
+        ? axisInfo.interval.toDouble()
+        : axisInfo.unit == "m"
+            ? (axisInfo.interval * 60).toDouble()
+            : (axisInfo.interval * 3600).toDouble();
 
-    final maxSeconds = activityDurations.values.fold<double>(
-        0, (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
+    // final maxSeconds = activityDurations.values.fold<double>(
+    //     0, (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
+
+    // double maxSeconds = getCleanMaxY(
+    //   activityDurations.values.fold<double>(
+    //     0,
+    //     (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max,
+    //   ),
+    // );
+    // double interval;
+    // if (maxSeconds <= 30) {
+    //   interval = 5;
+    // } else if (maxSeconds <= 60) {
+    //   interval = 10;
+    // } else {
+    //   interval = 60;
+    // }
+
+// Round up to the next 30s or 1min for a cleaner axis
+    // double maxSeconds = activityDurations.values.fold<double>(
+    //     0, (max, d) => d.inSeconds > max ? d.inSeconds.toDouble() : max);
+    // if (maxSeconds < 60) {
+    //   maxSeconds = ((maxSeconds / 10).ceil() * 10).toDouble();
+    // } else {
+    //   maxSeconds = ((maxSeconds / 60).ceil() * 60).toDouble();
+    // }
 
     return Card(
       elevation: 10,
@@ -452,7 +527,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
                     minY: 0,
-                    maxY: maxSeconds * 1.2,
+                    maxY: axisInfo.unit == "s"
+                        ? axisInfo.maxValue.toDouble()
+                        : axisInfo.unit == "m"
+                            ? (axisInfo.maxValue * 60).toDouble()
+                            : (axisInfo.maxValue * 3600).toDouble(),
+                    // maxY: maxSeconds,
+                    // maxY: maxSeconds * 1.2,
                     barTouchData: BarTouchData(
                       enabled: true,
                       touchTooltipData: BarTouchTooltipData(
@@ -515,30 +596,58 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                               ),
                             );
                           },
-                          reservedSize: 36,
+                          reservedSize: 20,
                         ),
                       ),
+                      rightTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                        showTitles: false,
+                      )),
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       leftTitles: AxisTitles(
+                        axisNameWidget: Text(
+                          "Duration (${axisInfo.unit})",
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        axisNameSize: 20,
+                        drawBelowEverything: true,
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 28,
-                          interval: maxSeconds > 60
-                              ? (maxSeconds / 5).roundToDouble()
-                              : maxSeconds > 10
-                                  ? 10
-                                  : 1,
+                          reservedSize: 25,
+                          // interval: maxSeconds > 60
+                          //     ? (maxSeconds / 5).roundToDouble()
+                          //     : maxSeconds > 10
+                          //         ? 10
+                          //         : 1,
+                          interval: intervalValue,
+                          // interval: interval,
+                          // getTitlesWidget: (value, meta) {
+                          //   final duration = Duration(seconds: value.toInt());
+                          //   if (duration.inHours > 0) {
+                          //     return Text('${duration.inHours}h',
+                          //         // '${duration.inHours}h ${duration.inMinutes.remainder(60)}m',
+                          //         style: const TextStyle(fontSize: 10));
+                          //   } else if (duration.inMinutes > 0) {
+                          //     return Text(
+                          //         '${duration.inMinutes}:${duration.inSeconds.remainder(60).toString().padLeft(2, '0')}',
+                          //         style: const TextStyle(fontSize: 10));
+                          //   } else {
+                          //     return Text('${duration.inSeconds}s',
+                          //         style: const TextStyle(fontSize: 10));
+                          //   }
+                          // },
                           getTitlesWidget: (value, meta) {
-                            final duration = Duration(seconds: value.toInt());
-                            if (duration.inHours > 0) {
-                              return Text('${duration.inHours}h',
-                                  style: const TextStyle(fontSize: 10));
-                            } else if (duration.inMinutes > 0) {
-                              return Text('${duration.inMinutes}m',
-                                  style: const TextStyle(fontSize: 10));
+                            int val = value.round();
+                            String label;
+                            if (axisInfo.unit == "h") {
+                              label = "${(val / 3600).round()}";
+                            } else if (axisInfo.unit == "m") {
+                              label = "${(val / 60).round()}";
                             } else {
-                              return Text('${duration.inSeconds}s',
-                                  style: const TextStyle(fontSize: 10));
+                              label = "${val}";
                             }
+                            return Text(label, style: TextStyle(fontSize: 10));
                           },
                         ),
                       ),
@@ -547,13 +656,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         // show: false
                         show: true,
                         drawHorizontalLine: true,
+                        horizontalInterval: intervalValue,
                         drawVerticalLine: false,
                         getDrawingHorizontalLine: (value) => FlLine(
                               color: Colors.grey.shade300,
                               strokeWidth: 1,
                             )),
-                    borderData:
-                        FlBorderData(show: false), // remove chart border
+                    borderData: FlBorderData(show: false),
                     barGroups: allActivities.map((activity) {
                       final seconds =
                           activityDurations[activity]?.inSeconds.toDouble() ??
@@ -565,14 +674,15 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                         barRods: [
                           BarChartRodData(
                             toY: seconds,
-                            width: 27,
+                            width: 25,
                             borderRadius: BorderRadius.circular(6),
                             color: isCurrent
                                 ? Colors.orange
                                 : Colors.grey.shade300,
                             backDrawRodData: BackgroundBarChartRodData(
                               show: true,
-                              toY: maxSeconds * 1.2,
+                              toY: axisInfo.maxValue.toDouble(),
+                              // toY: maxSeconds * 1.2,
                               color: Colors.transparent,
                             ),
                           ),
@@ -580,6 +690,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       );
                     }).toList(),
                   ),
+                  duration: const Duration(milliseconds: 250),
                 )),
           ],
         ),
