@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 class DropdownMenuWidget extends StatefulWidget {
-  const DropdownMenuWidget({super.key});
+  final String selectedValue;
+  final ValueChanged<String> onChanged;
+  const DropdownMenuWidget({
+    super.key,
+    this.selectedValue = 'Today',
+    required this.onChanged,
+  });
 
   @override
   State<DropdownMenuWidget> createState() => _DropdownMenuWidgetState();
@@ -9,7 +15,14 @@ class DropdownMenuWidget extends StatefulWidget {
 
 class _DropdownMenuWidgetState extends State<DropdownMenuWidget> {
   final List<String> list = ['Today', 'Last Week', 'Last Month'];
-  String dropdownValue = 'Today';
+  // String dropdownValue = 'Today';
+  late String _currentValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentValue = widget.selectedValue;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +35,7 @@ class _DropdownMenuWidgetState extends State<DropdownMenuWidget> {
           border: BoxBorder.all(width: 1, color: Colors.black),
         ),
         child: DropdownButton<String>(
-          value: dropdownValue,
+          value: _currentValue,
           icon: const Icon(Icons.arrow_drop_down, size: 16),
           iconSize: 16,
           elevation: 2,
@@ -31,8 +44,9 @@ class _DropdownMenuWidgetState extends State<DropdownMenuWidget> {
           borderRadius: BorderRadius.circular(4),
           onChanged: (String? newValue) {
             setState(() {
-              dropdownValue = newValue!;
+              _currentValue = newValue!;
             });
+            widget.onChanged(newValue!);
           },
           items: list.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(

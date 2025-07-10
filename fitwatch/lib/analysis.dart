@@ -4,6 +4,7 @@ import 'package:fitwatch/utilities/axis_tick_helper.dart';
 import 'package:fitwatch/sensorChart.dart';
 import 'package:fitwatch/utilities/databaseHelper.dart';
 import 'package:fitwatch/utilities/sensorDataRepository.dart';
+import 'package:fitwatch/widgets/activity_chart_widget.dart';
 import 'package:fitwatch/widgets/dropdownMenu.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -27,10 +28,12 @@ class AnalysisScreen extends StatefulWidget {
 class _AnalysisScreenState extends State<AnalysisScreen> {
   List<Map<String, dynamic>> _liveWindow = [];
   bool _isLoading = true;
-  late Timer _timer;
+  late Timer _chartUpdateTimer;
 
   late StreamSubscription _dataSubscription;
   late Future<Map<String, Duration>> todayDurationsFuture;
+  DateTime? _lastProcessedTimestamp = null;
+  final int chartUpdateIntervalSeconds = 5;
 
   final _sensorRepo = SensorDataRepository();
   // final _sensorRepo = SensorDataRepository(DatabaseHelper.instance);
@@ -38,6 +41,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   final int _displayPoints = 50;
 
   String selectedAnalysis = 'Today';
+
+  late ValueNotifier<Map<String, Duration>> activityDurationsNotifier;
 
   void _onDropdownChanged(String newValue) {
     setState(() {
@@ -49,8 +54,114 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void initState() {
     super.initState();
+    activityDurationsNotifier = ValueNotifier({});
     _setupLiveWindow();
-    todayDurationsFuture = _sensorRepo.getTodayActivityDuration();
+
+    _initializeLastProcessedTimestamp().then((_) async {
+      final initialDurations = await _sensorRepo.getTodayActivityDuration();
+      activityDurationsNotifier.value = initialDurations;
+
+      // Start the periodic updates after the initial DB load
+      _chartUpdateTimer = Timer.periodic(
+          Duration(seconds: chartUpdateIntervalSeconds),
+          (_) => _updateActivityDurations());
+    });
+
+    // todayDurationsFuture = _sensorRepo.getTodayActivityDuration();
+    //Start periodic timer for chart
+    // _chartUpdateTimer =
+    //     Timer.periodic(Duration(seconds: chartUpdateIntervalSeconds), (_) {
+    //   setState(() {
+    //     todayDurationsFuture = _updateActivityDurations();
+    //   });
+    // });
+  }
+
+  Future<void> _updateActivityDurations() async {
+    // Future<Map<String, Duration>> _updateActivityDurations() async {
+    final newEntries = _liveWindow.where((entry) {
+      final ts = DateTime.parse(entry['timestamp']);
+      return _lastProcessedTimestamp == null ||
+          ts.isAfter(_lastProcessedTimestamp!);
+    }).toList();
+
+    if (newEntries.isEmpty) return;
+    // if (newEntries.isEmpty) return todayDurationsFuture;
+    // final durations = await todayDurationsFuture;
+    final durations =
+        Map<String, Duration>.from(activityDurationsNotifier.value);
+    //update durations with new entries only
+    const gapThreshold = Duration(seconds: 2); // treat >2s as a break
+
+    String? currentActivity;
+    DateTime? segmentStartTime;
+    DateTime? lastTimestamp;
+
+    for (final entry in newEntries) {
+      final entryActivity = entry['activity']?.toString().toLowerCase();
+      if (!durations.containsKey(entryActivity)) continue;
+
+      final entryTime = DateTime.parse(entry['timestamp'].toString());
+
+      if (currentActivity == null) {
+        // Start first segment
+        currentActivity = entryActivity;
+        segmentStartTime = entryTime;
+      } else if (entryActivity != currentActivity ||
+          (lastTimestamp != null &&
+              entryTime.difference(lastTimestamp) > gapThreshold)) {
+        // Activity changed or gap detected, close previous segment
+        if (segmentStartTime != null && lastTimestamp != null) {
+          final duration = lastTimestamp.difference(segmentStartTime);
+          if (duration.inSeconds > 0) {
+            durations[currentActivity] = durations[currentActivity]! + duration;
+          }
+        }
+        // Start new segment
+        currentActivity = entryActivity;
+        segmentStartTime = entryTime;
+      }
+      lastTimestamp = entryTime;
+    }
+    // Add last segment if any
+    if (currentActivity != null &&
+        segmentStartTime != null &&
+        lastTimestamp != null) {
+      final duration = lastTimestamp.difference(segmentStartTime);
+      if (duration.inSeconds > 0) {
+        durations[currentActivity] = durations[currentActivity]! + duration;
+      }
+    }
+
+    //update the last processes timestamp
+    _lastProcessedTimestamp = DateTime.parse(newEntries.last['timestamp']);
+    // return durations;
+    activityDurationsNotifier.value = durations;
+  }
+
+  Future<void> _initializeLastProcessedTimestamp() async {
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+
+    // Query for the latest rae_logs entry after midnight
+    final db = await _sensorRepo.dbHelper.database;
+    final result = await db.query(
+      'raw_logs',
+      where: 'timestamp >= ?',
+      whereArgs: [todayMidnight.toIso8601String()],
+      orderBy: 'timestamp DESC',
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      // Parse the timestamp from the latest entry
+      _lastProcessedTimestamp =
+          DateTime.parse(result.first['timestamp'] as String);
+    } else {
+      // No data after midnight, set to today midnight
+      _lastProcessedTimestamp = todayMidnight;
+    }
+    print("_lastProcessedTimestamp initialized to: $_lastProcessedTimestamp");
   }
 
 // insert last 50 points if no live data
@@ -99,6 +210,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void dispose() {
     _dataSubscription.cancel();
+    _chartUpdateTimer.cancel();
+    activityDurationsNotifier.dispose();
     super.dispose();
   }
 
@@ -326,32 +439,40 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                   ),
                                 ),
                         SizedBox(height: 20),
-                        FutureBuilder<Map<String, Duration>>(
-                          future: todayDurationsFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            } else if (snapshot.hasError) {
-                              return Text(
-                                  'Error loading activity data: ${snapshot.error}');
-                            } else if (!snapshot.hasData ||
-                                snapshot.data!.isEmpty) {
-                              return const Text(
-                                  'No activity data available for today.');
-                            }
+                        if (selectedAnalysis == 'Today')
+                          // FutureBuilder<Map<String, Duration>>(
+                          //   future: todayDurationsFuture,
+                          //   builder: (context, snapshot) {
+                          //     if (snapshot.connectionState ==
+                          //         ConnectionState.waiting) {
+                          //       return const Center(
+                          //         child: CircularProgressIndicator(),
+                          //       );
+                          //     } else if (snapshot.hasError) {
+                          //       return Text(
+                          //           'Error loading activity data: ${snapshot.error}');
+                          //     } else if (!snapshot.hasData ||
+                          //         snapshot.data!.isEmpty) {
+                          //       return const Text(
+                          //           'No activity data available for today.');
+                          //     }
 
-                            final activityDurations =
-                                snapshot.data!; // Map<String, Duration>
+                          //     final activityDurations =
+                          //         snapshot.data!; // Map<String, Duration>
 
-                            return _buildActivityTimeAnalysisChart(
-                                activityDurations);
-                          },
-                        ),
-                        _buildActivityTimeAnalysisChart(
-                            _calculateActivityDurations()),
+                          //     return _buildActivityTimeAnalysisChart(
+                          //         activityDurations);
+                          //   },
+                          // )
+                          ActivityChartWidget(
+                            notifier: activityDurationsNotifier,
+                            selectedAnalysis: selectedAnalysis,
+                            onDropdownChanged: _onDropdownChanged,
+                            chartBuilder: _buildActivityTimeAnalysisChart,
+                          )
+                        else
+                          _buildActivityTimeAnalysisChart(
+                              _calculateActivityDurations()),
                       ],
                     ),
                   ),
@@ -515,7 +636,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   'Activity Analysis',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                DropdownMenuWidget(),
+                DropdownMenuWidget(
+                  selectedValue: selectedAnalysis,
+                  onChanged: _onDropdownChanged,
+                ),
               ],
             ),
             const SizedBox(
