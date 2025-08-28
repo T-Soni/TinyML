@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:intl/intl.dart';
 import 'package:fitwatch/utilities/databaseHelper.dart';
 
 class SensorDataRepository {
@@ -27,7 +27,7 @@ class SensorDataRepository {
 
   // Insert raw sensor data
   Future<int> insertRawData(Map<String, dynamic> data) async {
-    print("Insterting data to DB...");
+    // print("Insterting data to DB...");
     final db = await dbHelper.database;
     final id = await db.insert('raw_logs', data);
 
@@ -35,7 +35,7 @@ class SensorDataRepository {
     // getRawData(limit: 100).then(_dataController.add);
 
     getRawData(limit: 500).then((data) {
-      print("Emitting data stream of size: ${data.length}");
+      // print("Emitting data stream of size: ${data.length}");
       _dataController.add(data);
     });
     return id;
@@ -230,5 +230,108 @@ class SensorDataRepository {
       print('$activity: ${duration.inSeconds} seconds');
     });
     return durations;
+  }
+
+  // Get rolling 7-day activity summary
+  /// Returns a map where keys are weekdays (e.g., 'Mon', 'Tue')
+  Future<Map<String, Map<String, int>>> getRolling7DaysActivitySummary() async {
+    final db = await dbHelper.database;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Collect last 7 days dates (including today)
+    final List<DateTime> last7Days = List.generate(
+      7,
+      (i) => today.subtract(Duration(days: 6 - i)),
+    );
+
+    // Format dates as 'yyyy-MM-dd' for database querying
+    final List<String> dateStrings =
+        last7Days.map((d) => DateFormat('yyyy-MM-dd').format(d)).toList();
+
+    // Query daily summaries for last 7 days
+    final result = await db.query(
+      'daily_summary',
+      where: 'date IN (${List.filled(dateStrings.length, '?').join(',')})',
+      whereArgs: dateStrings,
+    );
+
+    // Prepare activities list
+    final activities = [
+      'WALKING',
+      'WALKING_UPSTAIRS',
+      'WALKING_DOWNSTAIRS',
+      'SITTING',
+      'STANDING',
+      'LAYING',
+    ];
+
+    // Output structure: {weekday: {activity: duration, ...}, ...}
+    final Map<String, Map<String, int>> summary = {};
+
+    for (int i = 0; i < last7Days.length; i++) {
+      final date = dateStrings[i];
+      final weekday =
+          DateFormat('EEE').format(last7Days[i]); // 'Mon', 'Tue', etc.
+
+      // Initialize durations as 0 for all activities
+      summary[weekday] = {for (var a in activities) a: 0};
+
+      // Filter results for this date
+      final dayEntries = result.where((row) => row['date'] == date);
+
+      for (final row in dayEntries) {
+        final activity = row['activity']?.toString();
+        final duration = row['duration'] is int
+            ? row['duration'] as int
+            : int.tryParse(row['duration'].toString()) ?? 0;
+        if (activity != null && summary[weekday]!.containsKey(activity)) {
+          summary[weekday]![activity] = duration;
+        }
+      }
+    }
+
+    return summary;
+  }
+
+
+
+  Future<Map<String, Map<String, int>>> getLast4WeeksActivitySummary() async {
+    final db = await dbHelper.database;
+    // Query all weekly summaries ordered by week_id
+    final List<Map<String, dynamic>> result = await db.query(
+      'weekly_summary',
+      orderBy:
+          'week_id ASC', // Order from oldest to newest for chronological display
+    );
+
+    final Map<String, Map<String, int>> summary = {};
+
+    const allActivities = [
+      'walking',
+      'walking_upstairs',
+      'walking_downstairs',
+      'sitting',
+      'standing',
+      'laying',
+    ];
+
+    for (final row in result) {
+      final weekId = row['week_id'] as String;
+      final activity = row['activity']?.toString().toLowerCase() ?? 'unknown';
+      final duration = row['duration'] as int;
+
+      // If this is the first time we've seen this week, add it to the map
+      // and initialize all possible activities with a duration of 0.
+      summary.putIfAbsent(
+          weekId, () => {for (var act in allActivities) act: 0});
+
+      // Update the duration for the specific activity from the database row.
+      if (summary[weekId]!.containsKey(activity)) {
+        summary[weekId]![activity] = duration;
+      }
+    }
+
+    return summary;
   }
 }

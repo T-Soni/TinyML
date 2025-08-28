@@ -218,7 +218,7 @@ class _DataLogsState extends State<DataLogs> {
             Flexible(
               flex: 2,
               child: ListView.builder(
-                shrinkWrap: true,
+                // shrinkWrap: true,
                 itemCount: session.liveData.length,
                 itemBuilder: (context, index) =>
                     _buildDataRow(session.liveData[index]),

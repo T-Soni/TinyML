@@ -7,7 +7,7 @@ import 'package:fitwatch/utilities/sensorDataRepository.dart';
 import 'package:fitwatch/widgets/ColorPalette.dart';
 import 'package:fitwatch/widgets/activity_chart_widget.dart';
 import 'package:fitwatch/widgets/dropdownMenu.dart';
-import 'package:fitwatch/widgets/groupActivityChart.dart';
+import 'package:fitwatch/widgets/groupActivityChart.dart' hide allActivities;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
@@ -35,6 +35,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   late StreamSubscription _dataSubscription;
   late Future<Map<String, Duration>> todayDurationsFuture;
+  late Future<Map<String, Map<String, int>>> weeklySummary;
+  late Future<Map<String, Map<String, int>>> last4WeeksSummary;
   DateTime? _lastProcessedTimestamp = null;
   final int chartUpdateIntervalSeconds = 5;
 
@@ -56,6 +58,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   void initState() {
+    _sensorRepo.printAllTableContents();
+    weeklySummary = _sensorRepo.getRolling7DaysActivitySummary();
+    last4WeeksSummary = _sensorRepo.getLast4WeeksActivitySummary();
     super.initState();
     activityDurationsNotifier = ValueNotifier({});
     _setupLiveWindow();
@@ -197,7 +202,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           //     .reversed
           //     .toList();
           _liveWindow = data.take(_displayPoints).toList().reversed.toList();
-          print('new data received' + _liveWindow.last.toString());
+          // print('new data received' + _liveWindow.last.toString());
           _isLoading = false;
         });
       }
@@ -236,28 +241,41 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     late double currMinG;
 
     int dataPointsLength = _liveWindow.length;
-    // Debug: Show live window length and sample data
-    // print(
-    //     'AnalysisScreen: _liveWindow.length = ' + dataPointsLength.toString());
-    // if (dataPointsLength > 0) {
-    //   print('First data: ' + _liveWindow.first.toString());
-    //   print('Last data: ' + _liveWindow.last.toString());
-    // }
+
     if (dataPointsLength == 0) {
-      return Material(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'No live sensor data received.',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+      return Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  // Color.fromARGB(255, 132, 169, 155),
+                  Colors.white10,
+                  Color.fromRGBO(224, 224, 224, 1),
+                ],
+                stops: [0.09, 0.55],
               ),
-              Text('Start an activity or check BLE connection.'),
-            ],
+            ),
           ),
-        ),
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'No live sensor data received.',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                  ),
+                  Text('Start an activity or check BLE connection.'),
+                ],
+              ),
+            ),
+          )
+        ],
       );
     }
     //check
@@ -509,10 +527,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                                                   _buildActivityTimeAnalysisChart,
                                             )
                                           : (selectedAnalysis == 'Last Week'
-                                              ? groupActivityChart()
-                                              : const Center(
-                                                  child: Text(
-                                                      'This is last month\'s analysis'))),
+                                              ? groupActivityChart(
+                                                  summary: weeklySummary,
+                                                  summaryType: 'weekly')
+                                              : groupActivityChart(
+                                                  summary: last4WeeksSummary,
+                                                  summaryType: 'monthly')),
 
                                   // else
                                   //   _buildActivityTimeAnalysisChart(
@@ -612,14 +632,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget _buildActivityTimeAnalysisChart(
       Map<String, Duration> activityDurations) {
     final axisInfo = computeAxisTicks(activityDurations.values);
-    const allActivities = [
-      "walking",
-      "walking_upstairs",
-      "walking_downstairs",
-      "sitting",
-      "standing",
-      "laying"
-    ];
+    // const allActivities = [
+    //   "walking",
+    //   "walking_upstairs",
+    //   "walking_downstairs",
+    //   "sitting",
+    //   "standing",
+    //   "laying"
+    // ];
     final double intervalValue = axisInfo.unit == "s"
         ? axisInfo.interval.toDouble()
         : axisInfo.unit == "m"

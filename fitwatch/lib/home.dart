@@ -5,14 +5,14 @@ import 'package:fitwatch/activityPage.dart';
 import 'package:fitwatch/analysis.dart';
 import 'package:fitwatch/dataLogs.dart';
 import 'package:fitwatch/profilePage.dart';
-import 'package:fitwatch/utilities/databaseHelper.dart';
+// import 'package:fitwatch/utilities/databaseHelper.dart';
 import 'package:fitwatch/utilities/sensorDataRepository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+// import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 
@@ -32,7 +32,9 @@ class _HomePage extends State<HomePage> {
 
   // late BuildContext _scaffoldContext;
   int currentPageIndex = 0;
+  /*
   late MqttServerClient _client;
+  */
   String _status = "Disconnected";
   // List<Map<String, dynamic>> _dataHistory = [];
   final _sensorRepo = SensorDataRepository();
@@ -45,7 +47,7 @@ class _HomePage extends State<HomePage> {
 
   final List<Map<String, dynamic>> _newDataBuffer = [];
 
-  StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;
+  /*StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _mqttSubscription;*/
 
   List<ScanResult> _recordList = [];
   StreamSubscription? _btStateSubscription;
@@ -408,7 +410,7 @@ class _HomePage extends State<HomePage> {
     _bleDataBuffer.clear();
   }
 
-  Future<void> _connectToMqtt() async {
+  /*Future<void> _connectToMqtt() async {
     setState(() {
       globals.isConnecting = true;
       _status = "Connecting...";
@@ -445,7 +447,7 @@ class _HomePage extends State<HomePage> {
       );
       return;
     }
-  }
+  }*/
 
   void _onConnected() {
     if (!mounted) return;
@@ -481,11 +483,12 @@ class _HomePage extends State<HomePage> {
     });
 
     if (_newDataBuffer.isEmpty) return;
+    print("New data buffer length: ${_newDataBuffer.length}");
 
     // Store all new logs to database
-    for (final log in _newDataBuffer) {
-      await _sensorRepo.insertRawData(log);
-    }
+    // for (final log in _newDataBuffer) {
+    //   await _sensorRepo.insertRawData(log);
+    // }
 
     // Group the _newDataBuffer by activity
     final Map<String, List<Map<String, dynamic>>> groupedByActivity = {};
@@ -550,8 +553,11 @@ class _HomePage extends State<HomePage> {
     // if (_dataHistory.isNotEmpty) {
     //   print('First point acc_x: ${_dataHistory.first['acc_X']}');
     // }
+    /*
     final ThemeData theme = Theme.of(context);
+    */
     // _scaffoldContext = context;
+
     return Scaffold(
       key: _scaffoldKey,
       // extendBodyBehindAppBar: true,
@@ -571,7 +577,9 @@ class _HomePage extends State<HomePage> {
                 });
                 if (connection == ConnectionType.mqtt) {
                   //trigger MQTT connection
+                  /*
                   _connectToMqtt();
+                  */
                 }
                 if (connection == ConnectionType.bluetooth) {
                   _connectViaBluetooth();
@@ -716,8 +724,8 @@ class _HomePage extends State<HomePage> {
     _cleanUpBleResources();
     _bottomSheetController?.close(); // Important!
     _btStateSubscription?.cancel();
-    _mqttSubscription?.cancel();
-    _client.disconnect();
+    /*_mqttSubscription?.cancel();*/
+    /* _client.disconnect();*/
     super.dispose();
   }
 }
